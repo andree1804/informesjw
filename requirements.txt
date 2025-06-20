@@ -1,4 +1,7 @@
 asgiref==3.8.1
 Django==5.2.3
+gunicorn==23.0.0
+packaging==25.0
 pysqlite3-binary==0.5.4
 sqlparse==0.5.3
+whitenoise==6.9.0
