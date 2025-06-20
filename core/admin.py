@@ -101,6 +101,7 @@ class ReportAdmin(admin.ModelAdmin):
             'year': selected_year,
         })
 
+
 admin.site.register(Report, ReportAdmin)
 admin.site.register(Group)
 admin.site.register(Privilege)
