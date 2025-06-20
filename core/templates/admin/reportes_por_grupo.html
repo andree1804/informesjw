@@ -1,0 +1,65 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+  <h1>Registrar Reportes por Grupo</h1>
+
+  <!-- Formulario de filtros: Grupo, Mes y Año -->
+  <form method="get" class="form-inline" style="margin-bottom: 20px;">
+    <div style="display: flex; gap: 20px; align-items: center;">
+      {{ form.group.label_tag }} {{ form.group }}
+      {{ form.month.label_tag }} {{ form.month }}
+      {{ form.year.label_tag }} {{ form.year }}
+      <button type="submit" class="default">Filtrar</button>
+    </div>
+  </form>
+
+  {% if persons %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="total" value="{{ persons|length }}">
+
+
+    <table class="admin-table" style="width: 100%; margin-top: 20px;">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Privilegio</th>
+          <th>Horas</th>
+          <th>Cursos</th>
+          <th>Participó</th>
+        </tr>
+      </thead>
+      <tbody>
+      	<input type="hidden" name="group" value="{{ group }}">
+		  	<input type="hidden" name="month" value="{{ month }}">
+		  	<input type="hidden" name="year" value="{{ year }}">
+        {% for person in persons %}
+        <tr>
+          <td>
+            {{ person.names }}
+            <input type="hidden" name="person_{{ forloop.counter0 }}" value="{{ person.id }}">
+          </td>
+          <td>
+            <select name="privilege_{{ forloop.counter0 }}">
+			  {% for priv in privilegios %}
+			    <option value="{{ priv.id }}" {% if person.existing_report and priv.id == person.existing_report.privilege.id %}selected{% endif %}>
+			      {{ priv.name }}
+			    </option>
+			  {% endfor %}
+			</select>
+          </td>
+          <td><input type="number" name="hours_{{ forloop.counter0 }}" value="{{ person.existing_report.hours|default:0 }}" min="0"></td>
+          <td><input type="number" name="courses_{{ forloop.counter0 }}" value="{{ person.existing_report.courses|default:0 }}" min="0"></td>
+          <td><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="default" style="margin-top: 20px;">Guardar Reportes</button>
+  </form>
+  {% else %}
+    <p style="margin-top: 20px;">Selecciona un grupo, mes y año para comenzar.</p>
+  {% endif %}
+
+{% endblock %}
