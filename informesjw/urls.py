@@ -16,6 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+def home(request):
+    return HttpResponse("<h1>¡La app Django está corriendo correctamente en Railway!</h1>")
+    
 urlpatterns = [
     path('', home),
     path('admin/', admin.site.urls),
