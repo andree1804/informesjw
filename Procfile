@@ -1,1 +1,1 @@
-web: gunicorn informesjw.wsgi
+web: gunicorn informesjw.wsgi --bind 0.0.0.0:$PORT
