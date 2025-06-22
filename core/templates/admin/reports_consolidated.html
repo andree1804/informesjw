@@ -1,0 +1,124 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div class="report-controls">
+    <form method="get" class="report-form">
+        {{ block.super }}
+        <div class="report-filters">
+            <div class="filter-group">
+                <label for="month">Mes:</label>
+                <select name="month" id="month" class="form-control">
+                    {% for value, name in model_admin.model.MONTH_CHOICES %}
+                        <option value="{{ value }}" {% if value == request.GET.month %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="year">Año:</label>
+
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" name="generate_report" value="1" class="btn btn-primary">
+                    Generar Reporte
+                </button>
+                <button type="submit" name="generate_report" value="1" formaction="?format=pdf" class="btn btn-secondary">
+                    Descargar PDF
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if stats %}
+<div class="consolidated-report">
+    <h1>Informes de la congregación - Testigos de Jehová</h1>
+    <h2>JW FLUS</h2>
+    <h3>Informes de la congregación</h3>
+    
+    <h4>PREDICACIÓN Y ASISTENCIA A LAS REUNIONES (5-1)</h4>
+    <h4>{{ stats.month }} de {{ stats.year }}</h4>
+    
+    <div class="report-meta">
+        <p><strong>Actualizado por</strong><br>{{ stats.updated_by }}</p>
+        <p><strong>Actualizado el</strong><br>{{ stats.updated_date }}</p>
+    </div>
+    
+    <div class="total-actives">
+        <p>Todos los publicadores activos<br><span class="total-number">{{ stats.total_activos }}</span></p>
+    </div>
+    
+    <div class="report-section">
+        <h4>Publicadores</h4>
+        <p>Cantidad de informes<br><span class="stat-number">{{ stats.publicadores.count }}</span></p>
+        <p>Cursos bíblicos<br><span class="stat-number">{{ stats.publicadores.courses }}</span></p>
+    </div>
+    
+    <div class="report-section">
+        <h4>Precursores auxiliares</h4>
+        <p>Cantidad de informes<br><span class="stat-number">{{ stats.auxiliares.count }}</span></p>
+        <p>Horas<br><span class="stat-number">{{ stats.auxiliares.hours }}</span></p>
+        <p>Cursos bíblicos<br><span class="stat-number">{{ stats.auxiliares.courses }}</span></p>
+    </div>
+    
+    <div class="report-section">
+        <h4>Precursores regulares</h4>
+        <p>Cantidad de informes<br><span class="stat-number">{{ stats.regulares.count }}</span></p>
+        <p>Horas<br><span class="stat-number">{{ stats.regulares.hours }}</span></p>
+        <p>Cursos bíblicos<br><span class="stat-number">{{ stats.regulares.courses }}</span></p>
+    </div>
+</div>
+{% endif %}
+
+{{ block.super }}
+
+<style>
+.report-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+}
+
+.report-form .report-filters {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    margin-top: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-actions {
+    margin-left: auto;
+}
+
+.consolidated-report {
+    background: white;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+}
+
+.report-section {
+    margin: 20px 0;
+    padding: 15px;
+    border-top: 1px solid #eee;
+}
+
+.total-number, .stat-number {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.report-meta {
+    display: flex;
+    gap: 30px;
+    margin: 15px 0;
+}
+</style>
+{% endblock %}

@@ -1,65 +1,156 @@
 {% extends "admin/base_site.html" %}
 {% load static %}
-
 {% block content %}
-  <h1>Registrar Reportes por Grupo</h1>
+<div id="content-main">
+    {{ block.super }}
+  <h1>Registrar Informes por Grupo</h1>
 
   <!-- Formulario de filtros: Grupo, Mes y Año -->
-  <form method="get" class="form-inline" style="margin-bottom: 20px;">
-    <div style="display: flex; gap: 20px; align-items: center;">
-      {{ form.group.label_tag }} {{ form.group }}
-      {{ form.month.label_tag }} {{ form.month }}
+  <form method="get" class="form-inline">
+  	<div style="display: flex; gap: 20px; align-items: center;">
       {{ form.year.label_tag }} {{ form.year }}
-      <button type="submit" class="default">Filtrar</button>
     </div>
+    <div style="display: flex; gap: 20px; align-items: center;">
+      {{ form.month.label_tag }} {{ form.month }}
+      {{ form.group.label_tag }} {{ form.group }}
+    </div>
+    <input type="submit" class="default" value="Filtrar" style="margin-right: auto;display: block;">
   </form>
 
   {% if persons %}
   <form method="post">
     {% csrf_token %}
-    <input type="hidden" name="total" value="{{ persons|length }}">
+	<div>
+	    <fieldset class="module aligned ">
+		    <input type="hidden" name="total" value="{{ persons|length }}">
+		    <table class="admin-table" style="width: 100%; margin-top: 20px;">
+		      <thead>
+		        <tr>
+		          <th>Nombre</th>
+		          <th>Privilegio</th>
+		          <th>Horas</th>
+		          <th>Cursos</th>
+		          <th>Participó</th>
+		        </tr>
+		      </thead>
+		      <tbody>
+		      	<input type="hidden" name="group" value="{{ group }}">
+				  	<input type="hidden" name="month" value="{{ month }}">
+				  	<input type="hidden" name="year" value="{{ year }}">
+		        {% for person in persons %}
+		        <tr>
+		          <td>
+		            {{ person.names }}
+		            <input type="hidden" name="person_{{ forloop.counter0 }}" value="{{ person.id }}">
+		          </td>
+		          <td>
+		            <select name="privilege_{{ forloop.counter0 }}">
+					  {% for priv in privilegios %}
+					    <option value="{{ priv.id }}" {% if priv.id == person.privilege.id %}selected{% endif %}>
+					      {{ priv.name }}
+					    </option>
 
-
-    <table class="admin-table" style="width: 100%; margin-top: 20px;">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Privilegio</th>
-          <th>Horas</th>
-          <th>Cursos</th>
-          <th>Participó</th>
-        </tr>
-      </thead>
-      <tbody>
-      	<input type="hidden" name="group" value="{{ group }}">
-		  	<input type="hidden" name="month" value="{{ month }}">
-		  	<input type="hidden" name="year" value="{{ year }}">
-        {% for person in persons %}
-        <tr>
-          <td>
-            {{ person.names }}
-            <input type="hidden" name="person_{{ forloop.counter0 }}" value="{{ person.id }}">
-          </td>
-          <td>
-            <select name="privilege_{{ forloop.counter0 }}">
-			  {% for priv in privilegios %}
-			    <option value="{{ priv.id }}" {% if person.existing_report and priv.id == person.existing_report.privilege.id %}selected{% endif %}>
-			      {{ priv.name }}
-			    </option>
-			  {% endfor %}
-			</select>
-          </td>
-          <td><input type="number" name="hours_{{ forloop.counter0 }}" value="{{ person.existing_report.hours|default:0 }}" min="0"></td>
-          <td><input type="number" name="courses_{{ forloop.counter0 }}" value="{{ person.existing_report.courses|default:0 }}" min="0"></td>
-          <td><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <button type="submit" class="default" style="margin-top: 20px;">Guardar Reportes</button>
+					    {{person.privilege.id}}
+					  {% endfor %}
+					</select>
+		          </td>
+		          <td><input type="number" name="hours_{{ forloop.counter0 }}" value="{{ person.existing_report.hours }}" min="0"></td>
+		          <td><input type="number" name="courses_{{ forloop.counter0 }}" value="{{ person.existing_report.courses }}" min="0"></td>
+		          <td><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}></td>
+		        </tr>
+		        {% endfor %}
+		      </tbody>
+		    </table>
+		</fieldset>
+	    <!--<button type="submit" class="default" style="margin-top: 20px;">Guardar Reportes</button>-->
+	    <div class="submit-row">
+	    	<input type="submit" class="default" value="Guardar informe">
+	    	{% if request.user.username == "admin" %}
+		    	{% if month and year %}
+				    <!--<a href="{% url 'admin:report_consolidated' %}?month={{ month }}&year={{ year }}&generate_report=1"
+				       class="button">
+				      Ver consolidado
+				    </a>-->
+				    {% if request.user.username == "admin" and month and year %}
+						<a href="{% url 'admin:report_consolidated' %}?month={{ month }}&year={{ year }}&generate_report=1&format=pdf"
+						   class="button default" style="background: green;">
+						  Descargar PDF
+						</a>
+					{% endif %}
+				{% endif %}
+			{% endif %}
+	    </div>
+	</div>
   </form>
   {% else %}
     <p style="margin-top: 20px;">Selecciona un grupo, mes y año para comenzar.</p>
   {% endif %}
+</div>
+  <style type="text/css">
+  	/* Reducir el ancho de los inputs de texto */
+	input[type="text"], 
+	input[type="password"], 
+	input[type="email"], 
+	input[type="url"], 
+	input[type="number"], 
+	textarea {
+	    width: 50% !important;  /* Ajusta el porcentaje según necesites */
+	    max-width: 300px;       /* Máximo ancho opcional */
+	}
+	select {
+		width: auto !important; 
+	    max-width: 300px;       /* Máximo ancho opcional */
+	    font-size: 12px;
+	}
 
+	/* Inputs de fechas y horas */
+	input[type="date"], 
+	input[type="time"], 
+	input[type="datetime-local"] {
+	    width: 200px !important;
+	}
+
+	@media (max-width: 640px) {
+		.submit-row {
+			display: flex!important; flex-direction: column!important; gap: 10px!important;
+		}
+	    td, th {
+	        padding: 2px;
+	        font-size: 12px;
+	        line-height: 14px;
+	    }
+	    thead th {
+		    font-size: 10px;
+		}
+	}
+  </style>
+
+<script type="text/javascript">
+	document.addEventListener('DOMContentLoaded', function() {
+    // Get all table rows (excluding header)
+    const rows = document.querySelectorAll('.admin-table tbody tr');
+    
+    rows.forEach(row => {
+        // Get the inputs for hours, courses, and participation checkbox
+        const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
+        const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
+        const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
+        
+        // Function to check the box if either hours or courses has a value > 0
+        const updateCheckbox = () => {
+            const hoursValue = parseFloat(hoursInput.value) || 0;
+            const coursesValue = parseFloat(coursesInput.value) || 0;
+            
+            // Check the box if either hours or courses is greater than 0
+            participatedCheckbox.checked = hoursValue > 0 || coursesValue > 0;
+        };
+        
+        // Add event listeners to both inputs
+        hoursInput.addEventListener('input', updateCheckbox);
+        hoursInput.addEventListener('change', updateCheckbox);
+        coursesInput.addEventListener('input', updateCheckbox);
+        coursesInput.addEventListener('change', updateCheckbox);
+    });
+});
+</script>
 {% endblock %}

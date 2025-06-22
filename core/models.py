@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 
 class Group(models.Model):
     name = models.CharField(max_length=100)
@@ -40,7 +41,35 @@ class Report(models.Model):
     year = models.IntegerField()
 
     class Meta:
+        verbose_name = "Informe de servicio"
+        verbose_name_plural = "Informes de servicio"
         unique_together = ('person', 'month', 'year')
 
     def __str__(self):
         return f"Reporte de {self.person} - {self.month} {self.year}"
+
+
+class PersonVirtual(models.Model):
+    in_person = models.PositiveIntegerField(
+        "Asistencia Presencial",
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+    virtual = models.PositiveIntegerField(
+        "Asistencia Zoom",
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+    meeting_date = models.DateField("Fecha de reunión")
+    
+    class Meta:
+        verbose_name = "Asistencia a reunión"
+        verbose_name_plural = "Asistencias a reuniones"
+        ordering = ['-meeting_date']
+    
+    def __str__(self):
+        return f"Presencial: {self.in_person}, Virtual: {self.virtual} - {self.meeting_date}"
+    
+    @property
+    def total(self):
+        return self.in_person + self.virtual

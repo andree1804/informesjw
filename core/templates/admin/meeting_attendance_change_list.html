@@ -1,0 +1,87 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block content %}
+<div id="content-main">
+    {{ block.super }}
+  
+    <!-- Formulario de filtros: Grupo, Mes y Año -->
+  <form method="get" class="form-inline" style="margin-bottom: 20px;">
+  	<div style="display: flex; gap: 20px; align-items: center;">
+      {{ form.year_.label_tag }} {{ form.year_ }}
+    </div>
+    <div style="display: flex; gap: 20px; align-items: center;">
+      {{ form.month_.label_tag }} {{ form.month_ }}
+    </div>
+    <input type="submit" class="default" value="Filtrar" style="margin-right: auto;display: block;">
+  </form>
+
+  <div class="module" style="margin-top: 20px;">
+  <table class="admin-table" style="width: 100%; margin-top: 20px;">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Presencial</th>
+      <th>Virtual</th>
+      <th>Total</th>
+      <th>Editar</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mes, data in meses.items %}
+      {% for reg in data.registros %}
+        <tr>
+          <td>{{ reg.meeting_date }}</td>
+          <td>{{ reg.in_person }}</td>
+          <td>{{ reg.virtual }}</td>
+          <td>{{ reg.in_person|add:reg.virtual }}</td>
+          <td>
+            <a href="{% url 'admin:core_personvirtual_change' reg.id %}">Editar</a>
+          </td>
+        </tr>
+      {% endfor %}
+    {% endfor %}
+  </tbody>
+  <!--<tfoot>
+    <tr>
+      <th>Total general</th>
+      <th>{{ total_in_person }}</th>
+      <th>{{ total_virtual }}</th>
+      <th>{{ total_general }}</th>
+      <th></th>
+    </tr>
+  </tfoot>-->
+</table>
+    </div>
+</div>
+
+<style>
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+    .attendance-table th, 
+    .attendance-table td {
+        border: 1px solid #e1e1e1;
+        padding: 10px;
+        text-align: center;
+    }
+    .attendance-table th {
+        background-color: #f8f8f8;
+        font-weight: 600;
+    }
+    .attendance-table tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+    .module h2 {
+        color: #333;
+        margin: 25px 0 15px 0;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+    }
+    .total-cell {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
