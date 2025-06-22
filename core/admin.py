@@ -37,11 +37,10 @@ class ReportAdmin(admin.ModelAdmin):
             groups = Group.objects.all()
         if group_id and selected_month and selected_year:
             if request.user.username != 'admin':
-                persons = list(Person.objects.filter(group_id=groups.id))
+                persons = list(Person.objects.filter(group_id=groups.id).order_by('names'))
             else:
-                persons = list(Person.objects.filter(group_id=group_id))
+                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
             
-
             # Obtener los reportes ya existentes
             reports = Report.objects.filter(
                 person__in=persons,

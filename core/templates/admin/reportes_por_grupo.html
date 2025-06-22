@@ -15,6 +15,7 @@
       {{ form.group.label_tag }} {{ form.group }}
     </div>
     <input type="submit" class="default" value="Filtrar" style="margin-right: auto;display: block;">
+    <input type="text" name="buscar" value="" placeholder="Buscar por apellido o nombre">
   </form>
 
   {% if persons %}
@@ -88,7 +89,6 @@
 </div>
   <style type="text/css">
   	/* Reducir el ancho de los inputs de texto */
-	input[type="text"], 
 	input[type="password"], 
 	input[type="email"], 
 	input[type="url"], 
@@ -111,6 +111,9 @@
 	}
 
 	@media (max-width: 640px) {
+		input[type="text"], {
+			width: 100%!important;
+		}
 		.submit-row {
 			display: flex!important; flex-direction: column!important; gap: 10px!important;
 		}
@@ -150,7 +153,51 @@
         hoursInput.addEventListener('change', updateCheckbox);
         coursesInput.addEventListener('input', updateCheckbox);
         coursesInput.addEventListener('change', updateCheckbox);
+
+
+
+        const buscarInput = document.querySelector('input[name="buscar"]');
+	    const rows = document.querySelectorAll('.admin-table tbody tr');
+
+	    if (buscarInput) {
+	        buscarInput.addEventListener('input', function () {
+	            const filtro = buscarInput.value.toLowerCase();
+
+	            rows.forEach(row => {
+	                const nombreCelda = row.querySelector('td'); // primera columna
+	                const texto = nombreCelda?.textContent.toLowerCase() || '';
+	                
+	                if (texto.includes(filtro)) {
+	                    row.style.display = ''; // mostrar fila
+	                } else {
+	                    row.style.display = 'none'; // ocultar fila
+	                }
+	            });
+	        });
+	    }
     });
 });
+
+	/*document.addEventListener('DOMContentLoaded', function () {
+    const buscarInput = document.querySelector('input[name="buscar"]');
+    const rows = document.querySelectorAll('.admin-table tbody tr');
+
+    if (buscarInput) {
+        buscarInput.addEventListener('input', function () {
+            const filtro = buscarInput.value.toLowerCase();
+
+            rows.forEach(row => {
+                const nombreCelda = row.querySelector('td'); // primera columna
+                const texto = nombreCelda?.textContent.toLowerCase() || '';
+                
+                if (texto.includes(filtro)) {
+                    row.style.display = ''; // mostrar fila
+                } else {
+                    row.style.display = 'none'; // ocultar fila
+                }
+            });
+        });
+    }
+});*/
 </script>
 {% endblock %}
