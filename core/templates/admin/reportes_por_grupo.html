@@ -130,74 +130,52 @@
 
 <script type="text/javascript">
 	document.addEventListener('DOMContentLoaded', function() {
-    // Get all table rows (excluding header)
-    const rows = document.querySelectorAll('.admin-table tbody tr');
-    
-    rows.forEach(row => {
-        // Get the inputs for hours, courses, and participation checkbox
-        const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
-        const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
-        const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
-        
-        // Function to check the box if either hours or courses has a value > 0
-        const updateCheckbox = () => {
-            const hoursValue = parseFloat(hoursInput.value) || 0;
-            const coursesValue = parseFloat(coursesInput.value) || 0;
-            
-            // Check the box if either hours or courses is greater than 0
-            participatedCheckbox.checked = hoursValue > 0 || coursesValue > 0;
-        };
-        
-        // Add event listeners to both inputs
-        hoursInput.addEventListener('input', updateCheckbox);
-        hoursInput.addEventListener('change', updateCheckbox);
-        coursesInput.addEventListener('input', updateCheckbox);
-        coursesInput.addEventListener('change', updateCheckbox);
-
-
-
-        const buscarInput = document.querySelector('input[name="buscar"]');
+	    // Get all table rows (excluding header)
 	    const rows = document.querySelectorAll('.admin-table tbody tr');
+	    
+	    rows.forEach(row => {
+	        // Get the inputs for hours, courses, and participation checkbox
+	        const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
+	        const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
+	        const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
+	        
+	        // Function to check the box if either hours or courses has a value > 0
+	        const updateCheckbox = () => {
+	            const hoursValue = parseFloat(hoursInput.value) || 0;
+	            const coursesValue = parseFloat(coursesInput.value) || 0;
+	            
+	            // Check the box if either hours or courses is greater than 0
+	            participatedCheckbox.checked = hoursValue > 0 || coursesValue > 0;
+	        };
+	        
+	        // Add event listeners to both inputs
+	        hoursInput.addEventListener('input', updateCheckbox);
+	        hoursInput.addEventListener('change', updateCheckbox);
+	        coursesInput.addEventListener('input', updateCheckbox);
+	        coursesInput.addEventListener('change', updateCheckbox);
 
-	    if (buscarInput) {
-	        buscarInput.addEventListener('input', function () {
-	            const filtro = buscarInput.value.toLowerCase();
 
-	            rows.forEach(row => {
-	                const nombreCelda = row.querySelector('td'); // primera columna
-	                const texto = nombreCelda?.textContent.toLowerCase() || '';
-	                
-	                if (texto.includes(filtro)) {
-	                    row.style.display = ''; // mostrar fila
-	                } else {
-	                    row.style.display = 'none'; // ocultar fila
-	                }
-	            });
-	        });
-	    }
-    });
+
+	        const buscarInput = document.querySelector('input[name="buscar"]');
+		    const rows = document.querySelectorAll('.admin-table tbody tr');
+
+		    if (buscarInput) {
+		        buscarInput.addEventListener('input', function () {
+		            const filtro = buscarInput.value.toLowerCase();
+
+		            rows.forEach(row => {
+		                const nombreCelda = row.querySelector('td'); // primera columna
+		                const texto = nombreCelda?.textContent.toLowerCase() || '';
+		                
+		                if (texto.includes(filtro)) {
+		                    row.style.display = ''; // mostrar fila
+		                } else {
+		                    row.style.display = 'none'; // ocultar fila
+		                }
+		            });
+		        });
+		    }
+	    });
 });
-
-	/*document.addEventListener('DOMContentLoaded', function () {
-    const buscarInput = document.querySelector('input[name="buscar"]');
-    const rows = document.querySelectorAll('.admin-table tbody tr');
-
-    if (buscarInput) {
-        buscarInput.addEventListener('input', function () {
-            const filtro = buscarInput.value.toLowerCase();
-
-            rows.forEach(row => {
-                const nombreCelda = row.querySelector('td'); // primera columna
-                const texto = nombreCelda?.textContent.toLowerCase() || '';
-                
-                if (texto.includes(filtro)) {
-                    row.style.display = ''; // mostrar fila
-                } else {
-                    row.style.display = 'none'; // ocultar fila
-                }
-            });
-        });
-    }
-});*/
 </script>
 {% endblock %}

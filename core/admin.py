@@ -25,11 +25,26 @@ class ReportAdmin(admin.ModelAdmin):
     change_list_template = "admin/reportes_por_grupo.html"
 
     def changelist_view(self, request, extra_context=None):
-        form = GroupSelectForm(request.GET or None)
+        #form = GroupSelectForm(request.GET or None)
+        now = datetime.now()
+        meses = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ]
+
+        nombre_mes = meses[now.month - 2]
         persons = []
         group_id = request.GET.get('group')
-        selected_month = request.GET.get('month')
-        selected_year = request.GET.get('year')
+        selected_month = request.GET.get('month', str(nombre_mes.capitalize()))
+        selected_year = request.GET.get('year', str(now.year))
+        #current_month = request.GET.get('month_', str(now.month))
+        #current_year = request.GET.get('year_', str(now.year))
+
+        form = GroupSelectForm({
+            'month': selected_month,
+            'year': selected_year,
+            **request.GET
+        })
 
         if request.user.username != 'admin':
             groups = Group.objects.filter(name=request.user.username.capitalize()).first()
