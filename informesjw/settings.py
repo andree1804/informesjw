@@ -106,7 +106,7 @@ DATABASES = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://informejw.loca.lt',
+    'https://informesjw-master.up.railway.app',
 ]
 
 
