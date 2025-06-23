@@ -57,7 +57,169 @@
 		</table>
     </div>
 </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detección de Personas con Heatmap</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e1e1e;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
 
+    video, canvas, img {
+      border: 2px solid #333;
+      border-radius: 10px;
+      max-width: 100%;
+      margin: 10px 0;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #00bcd4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #008ba3;
+    }
+
+    #personCount {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Detección de Personas con Heatmap</h1>
+
+  <video id="video" width="640" height="480" autoplay muted></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+
+  <div>
+    <button id="toggleCamera">Cambiar Cámara</button>
+    <button id="takePhoto">Tomar Foto</button>
+    <input type="file" id="uploadImage" accept="image/*" style="display:none;">
+    <button onclick="document.getElementById('uploadImage').click()">Cargar Imagen</button>
+  </div>
+
+  <div id="personCount">Personas: 0</div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const personCount = document.getElementById('personCount');
+    const toggleBtn = document.getElementById('toggleCamera');
+    const takePhotoBtn = document.getElementById('takePhoto');
+    const uploadInput = document.getElementById('uploadImage');
+
+    let model;
+    let stream;
+    let facingMode = "user";
+
+    // Cargar modelo
+    async function loadModel() {
+      model = await cocoSsd.load();
+    }
+
+    // Inicializar cámara
+    async function startCamera() {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facingMode },
+        audio: false
+      });
+
+      video.srcObject = stream;
+
+      video.onloadedmetadata = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        detectFromVideo();
+      };
+    }
+
+    // Detectar en video continuo
+    async function detectFromVideo() {
+      if (!model) return;
+
+      const predictions = await model.detect(video);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawHeatmap(predictions);
+      requestAnimationFrame(detectFromVideo);
+    }
+
+    // Dibujar heatmap
+    function drawHeatmap(predictions) {
+      const people = predictions.filter(p => p.class === 'person');
+      personCount.textContent = `Personas: ${people.length}`;
+
+      people.forEach(p => {
+        const [x, y, width, height] = p.bbox;
+
+        const gradient = ctx.createRadialGradient(
+          x + width / 2, y + height / 2, 0,
+          x + width / 2, y + height / 2, Math.max(width, height) / 1.5
+        );
+        gradient.addColorStop(0, 'rgba(255,0,0,0.7)');
+        gradient.addColorStop(1, 'rgba(255,255,0,0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y, width, height);
+      });
+    }
+
+    // Tomar foto y detectar
+    takePhotoBtn.addEventListener('click', async () => {
+      if (!model) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const predictions = await model.detect(canvas);
+      drawHeatmap(predictions);
+    });
+
+    // Cambiar cámara
+    toggleBtn.addEventListener('click', () => {
+      facingMode = facingMode === "user" ? "environment" : "user";
+      startCamera();
+    });
+
+    // Cargar imagen desde input
+    uploadInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const img = new Image();
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const predictions = await model.detect(canvas);
+        drawHeatmap(predictions);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+    loadModel().then(startCamera);
+  </script>
+</body>
+</html>
 <style>
     .attendance-table {
         width: 100%;
