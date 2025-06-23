@@ -287,6 +287,7 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                     position: absolute;
                     top: 0;
                     left: 0;
+                    height: 100%;
                 }
                 .person-count {
                     position: absolute;
@@ -313,6 +314,10 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                 const overlay = document.getElementById('overlay');
                 const overlayCtx = overlay.getContext('2d');
                 const personCountDiv = document.getElementById('personCount');
+                const inPerson = document.querySelector('input[name="in_person"]');
+                if (!inPerson) {
+                    console.error("No se encontró el input #id_in_person");
+                }
                 
                 // Variables de estado
                 let stream = null;
@@ -427,6 +432,10 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                     photoContainer.style.display = 'block';
                     
                     // Detectar personas en la foto
+                    if (!model) {
+                        model = await cocoSsd.load();
+                    }
+
                     const predictions = await model.detect(photoResult);
                     const people = predictions.filter(pred => pred.class === 'person');
                     
@@ -460,6 +469,12 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                     
                     // Mostrar el número de personas detectadas
                     resultsDiv.textContent = `Personas detectadas: ${people.length}`;
+                    console.log('uy')
+                    console.log(people.length);
+                    if (inPerson) {
+                        inPerson.value = people.length;
+                    }
+                    
                 });
                 
                 // Volver a tomar foto
@@ -480,6 +495,38 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                 // Inicializar la cámara al cargar la página
                 window.addEventListener('DOMContentLoaded', () => {
                     initCamera(currentFacingMode);
+                    setTimeout(() => {
+                    const inPerson = document.querySelector('input[name="in_person"]');
+                    if (!inPerson) {
+                        console.error("No se encontró el input #id_in_person");
+                        return;
+                    }
+
+                    // Mueve aquí el listener para tomar la foto y asignar el valor
+                    takePhotoBtn.addEventListener('click', async () => {
+                        detectionActive = false;
+                        photoResult.width = video.videoWidth;
+                        photoResult.height = video.videoHeight;
+                        const ctx = photoResult.getContext('2d');
+                        ctx.drawImage(video, 0, 0, photoResult.width, photoResult.height);
+
+                        video.style.display = 'none';
+                        overlay.style.display = 'none';
+                        photoContainer.style.display = 'block';
+
+                        if (!model) {
+                            model = await cocoSsd.load();
+                        }
+
+                        const predictions = await model.detect(photoResult);
+                        const people = predictions.filter(pred => pred.class === 'person');
+
+                        // ... dibujar resultados ...
+
+                        resultsDiv.textContent = `Personas detectadas: ${people.length}`;
+                        inPerson.value = people.length;
+                    });
+                }, 1000);
                 });
             </script>
 
