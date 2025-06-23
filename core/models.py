@@ -66,6 +66,7 @@ class PersonVirtual(models.Model):
         verbose_name = "Asistencia a reunión"
         verbose_name_plural = "Asistencias a reuniones"
         ordering = ['-meeting_date']
+        unique_together = (('meeting_date',),)
     
     def __str__(self):
         return f"Presencial: {self.in_person}, Virtual: {self.virtual} - {self.meeting_date}"
