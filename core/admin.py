@@ -260,8 +260,8 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
             </style>
             <script>
                 // Configuración
-                const DETECTION_THRESHOLD = 0.5;
-                const HIGH_DENSITY_THRESHOLD = 50;
+                const DETECTION_THRESHOLD = 0.3;
+                const HIGH_DENSITY_THRESHOLD = 500;
                 
                 // Elementos DOM
                 const video = document.getElementById('video');
