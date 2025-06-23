@@ -5,56 +5,56 @@
     {{ block.super }}
   
     <!-- Formulario de filtros: Grupo, Mes y Año -->
-  <form method="get" class="form-inline" style="margin-bottom: 20px;">
-  	<div style="display: flex; gap: 20px; align-items: center;">
-      {{ form.year_.label_tag }} {{ form.year_ }}
-    </div>
-    <div style="display: flex; gap: 20px; align-items: center;">
-      {{ form.month_.label_tag }} {{ form.month_ }}
-    </div>
-    <input type="submit" class="default" value="Filtrar" style="margin-right: auto;display: block; float: left;">
-    <a href="/admin/core/personvirtual/add/"
-	   class="button default" style="background: green; display: inline-table; float: right;">
-		Agregar reunión
-	</a>
-  </form>
+	<form method="get" class="form-inline" style="margin-bottom: 20px;">
+		<div style="display: flex; gap: 20px; align-items: center;">
+	  	{{ form.year_.label_tag }} {{ form.year_ }}
+		</div>
+		<div style="display: flex; gap: 20px; align-items: center;">
+		  {{ form.month_.label_tag }} {{ form.month_ }}
+		</div>
+		<input type="submit" class="default" value="Filtrar" style="margin-right: auto;display: block; float: left;">
+		<a href="/admin/core/personvirtual/add/"
+		   class="button default" style="background: green; display: inline-table; float: right;">
+			Agregar reunión
+		</a>
+	</form>
 
-  <div class="module" style="margin-top: 20px;">
-  <table class="admin-table" style="width: 100%; margin-top: 20px;">
-  <thead>
-    <tr>
-      <th>Fecha</th>
-      <th>Presencial</th>
-      <th>Virtual</th>
-      <th>Total</th>
-      <th>Editar</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for mes, data in meses.items %}
-      {% for reg in data.registros %}
-        <tr>
-          <td>{{ reg.meeting_date }}</td>
-          <td>{{ reg.in_person }}</td>
-          <td>{{ reg.virtual }}</td>
-          <td>{{ reg.in_person|add:reg.virtual }}</td>
-          <td>
-            <a href="{% url 'admin:core_personvirtual_change' reg.id %}">Editar</a>
-          </td>
-        </tr>
-      {% endfor %}
-    {% endfor %}
-  </tbody>
-  <!--<tfoot>
-    <tr>
-      <th>Total general</th>
-      <th>{{ total_in_person }}</th>
-      <th>{{ total_virtual }}</th>
-      <th>{{ total_general }}</th>
-      <th></th>
-    </tr>
-  </tfoot>-->
-</table>
+  	<div class="module" style="margin-top: 20px;">
+		<table class="admin-table" style="width: 100%; margin-top: 20px;">
+		  <thead>
+		    <tr>
+		      <th>Fecha</th>
+		      <th>Presencial</th>
+		      <th>Virtual</th>
+		      <th>Total</th>
+		      <th>Editar</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+		    {% for mes, data in meses.items %}
+		      {% for reg in data.registros %}
+		        <tr>
+		          <td>{{ reg.meeting_date }}</td>
+		          <td>{{ reg.in_person }}</td>
+		          <td>{{ reg.virtual }}</td>
+		          <td>{{ reg.in_person|add:reg.virtual }}</td>
+		          <td>
+		            <a href="{% url 'admin:core_personvirtual_change' reg.id %}">Editar</a>
+		          </td>
+		        </tr>
+		      {% endfor %}
+		    {% endfor %}
+		  </tbody>
+		  <!--<tfoot>
+		    <tr>
+		      <th>Total general</th>
+		      <th>{{ total_in_person }}</th>
+		      <th>{{ total_virtual }}</th>
+		      <th>{{ total_general }}</th>
+		      <th></th>
+		    </tr>
+		  </tfoot>-->
+		</table>
     </div>
 </div>
 

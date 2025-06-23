@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.timezone import localtime
+from django.utils.safestring import mark_safe
 
 
 class ReportAdmin(admin.ModelAdmin):
@@ -221,6 +222,270 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
         if obj.virtual is None:
             obj.virtual = 0
         super().save_model(request, obj, form, change)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['mi_html_extra'] = mark_safe(self.html_cam())
+        return super().add_view(request, form_url, extra_context=extra_context)
+
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['mi_html_extra'] = mark_safe(self.html_cam())
+        return super().add_view(request, form_url, extra_context=extra_context)
+
+    def html_cam(self):
+        return """
+            <!-- HTML -->
+            <div class="canvas-container">
+                <video id="cameraView" autoplay playsinline></video>
+                <canvas id="overlay"></canvas>
+                <div id="personCount" class="person-count">Personas: 0</div>
+            </div>
+            
+            <button id="takePhotoBtn">Tomar Foto</button>
+            <button id="toggleCameraBtn">Cambiar Cámara</button>
+            
+            <div id="photoContainer" style="display: none;">
+                <h2>Foto Capturada</h2>
+                <canvas id="photoResult"></canvas>
+                <div id="results"></div>
+                <button id="retakeBtn">Volver a Tomar</button>
+            </div>
+
+            <!-- CSS -->
+            <style>
+                #cameraView, #photoResult {
+                    width: 100%;
+                    max-width: 640px;
+                    margin: 10px auto;
+                    border: 2px solid #333;
+                    border-radius: 5px;
+                }
+                button {
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 10px 15px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin: 5px;
+                }
+                button:hover {
+                    background-color: #45a049;
+                }
+                #results {
+                    margin-top: 20px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+                .canvas-container {
+                    position: relative;
+                    margin: 0 auto;
+                }
+                #overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                }
+                .person-count {
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    background-color: rgba(0,0,0,0.7);
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 5px;
+                    z-index: 100;
+                }
+            </style>
+
+            <!-- JS -->
+            <script>
+                // Elementos del DOM
+                const video = document.getElementById('cameraView');
+                const takePhotoBtn = document.getElementById('takePhotoBtn');
+                const toggleCameraBtn = document.getElementById('toggleCameraBtn');
+                const photoResult = document.getElementById('photoResult');
+                const photoContainer = document.getElementById('photoContainer');
+                const resultsDiv = document.getElementById('results');
+                const retakeBtn = document.getElementById('retakeBtn');
+                const overlay = document.getElementById('overlay');
+                const overlayCtx = overlay.getContext('2d');
+                const personCountDiv = document.getElementById('personCount');
+                
+                // Variables de estado
+                let stream = null;
+                let currentFacingMode = 'user'; // 'user' para frontal, 'environment' para trasera
+                let model = null;
+                let detectionActive = true;
+                
+                // Inicializar la cámara
+                async function initCamera(facingMode) {
+                    try {
+                        // Detener el stream actual si existe
+                        if (stream) {
+                            stream.getTracks().forEach(track => track.stop());
+                        }
+                        
+                        // Obtener acceso a la cámara
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                facingMode: facingMode,
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
+                            },
+                            audio: false
+                        });
+                        
+                        video.srcObject = stream;
+                        
+                        // Ajustar el overlay al tamaño del video
+                        video.onloadedmetadata = () => {
+                            overlay.width = video.videoWidth;
+                            overlay.height = video.videoHeight;
+                        };
+                        
+                        // Cargar el modelo de detección de objetos COCO-SSD
+                        if (!model) {
+                            model = await cocoSsd.load();
+                        }
+                        
+                        // Iniciar detección en tiempo real
+                        detectPeopleRealTime();
+                        
+                    } catch (err) {
+                        console.error("Error al acceder a la cámara:", err);
+                        alert("No se pudo acceder a la cámara. Asegúrate de permitir el acceso.");
+                    }
+                }
+                
+                // Detectar personas en tiempo real
+                async function detectPeopleRealTime() {
+                    if (!model || !video.readyState || !detectionActive) return;
+                    
+                    // Realizar la detección
+                    const predictions = await model.detect(video);
+                    
+                    // Filtrar solo las detecciones de personas (clase 'person')
+                    const people = predictions.filter(pred => pred.class === 'person');
+                    
+                    // Actualizar el contador
+                    personCountDiv.textContent = `Personas: ${people.length}`;
+                    
+                    // Dibujar sobre el overlay
+                    overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+                    
+                    if (people.length > 0) {
+                        overlayCtx.strokeStyle = 'red';
+                        overlayCtx.lineWidth = 2;
+                        overlayCtx.font = '16px Arial';
+                        overlayCtx.fillStyle = 'red';
+                        
+                        people.forEach((person, i) => {
+                            // Dibujar rectángulo alrededor de la persona
+                            const [x, y, width, height] = person.bbox;
+                            
+                            overlayCtx.strokeRect(x, y, width, height);
+                            overlayCtx.fillText(`Persona ${i+1}`, x, y > 20 ? y - 5 : 20);
+                            
+                            // Opcional: dibujar puntos clave si están disponibles
+                            if (person.keypoints) {
+                                overlayCtx.fillStyle = 'blue';
+                                person.keypoints.forEach(keypoint => {
+                                    if (keypoint.score > 0.5) {
+                                        overlayCtx.beginPath();
+                                        overlayCtx.arc(keypoint.x, keypoint.y, 3, 0, 2 * Math.PI);
+                                        overlayCtx.fill();
+                                    }
+                                });
+                                overlayCtx.fillStyle = 'red';
+                            }
+                        });
+                    }
+                    
+                    // Continuar la detección
+                    requestAnimationFrame(detectPeopleRealTime);
+                }
+                
+                // Tomar foto y procesarla
+                takePhotoBtn.addEventListener('click', async () => {
+                    // Pausar la detección en tiempo real
+                    detectionActive = false;
+                    
+                    // Ajustar el canvas de resultado al tamaño del video
+                    photoResult.width = video.videoWidth;
+                    photoResult.height = video.videoHeight;
+                    
+                    // Dibujar la imagen del video en el canvas
+                    const ctx = photoResult.getContext('2d');
+                    ctx.drawImage(video, 0, 0, photoResult.width, photoResult.height);
+                    
+                    // Ocultar la vista de la cámara y mostrar la foto
+                    video.style.display = 'none';
+                    overlay.style.display = 'none';
+                    photoContainer.style.display = 'block';
+                    
+                    // Detectar personas en la foto
+                    const predictions = await model.detect(photoResult);
+                    const people = predictions.filter(pred => pred.class === 'person');
+                    
+                    // Dibujar los resultados en la foto
+                    if (people.length > 0) {
+                        ctx.strokeStyle = 'red';
+                        ctx.lineWidth = 2;
+                        ctx.font = '16px Arial';
+                        ctx.fillStyle = 'red';
+                        
+                        people.forEach((person, i) => {
+                            const [x, y, width, height] = person.bbox;
+                            
+                            ctx.strokeRect(x, y, width, height);
+                            ctx.fillText(`Persona ${i+1}`, x, y > 20 ? y - 5 : 20);
+                            
+                            // Opcional: dibujar puntos clave si están disponibles
+                            if (person.keypoints) {
+                                ctx.fillStyle = 'blue';
+                                person.keypoints.forEach(keypoint => {
+                                    if (keypoint.score > 0.5) {
+                                        ctx.beginPath();
+                                        ctx.arc(keypoint.x, keypoint.y, 3, 0, 2 * Math.PI);
+                                        ctx.fill();
+                                    }
+                                });
+                                ctx.fillStyle = 'red';
+                            }
+                        });
+                    }
+                    
+                    // Mostrar el número de personas detectadas
+                    resultsDiv.textContent = `Personas detectadas: ${people.length}`;
+                });
+                
+                // Volver a tomar foto
+                retakeBtn.addEventListener('click', () => {
+                    photoContainer.style.display = 'none';
+                    video.style.display = 'block';
+                    overlay.style.display = 'block';
+                    detectionActive = true;
+                    detectPeopleRealTime();
+                });
+                
+                // Cambiar entre cámara frontal y trasera
+                toggleCameraBtn.addEventListener('click', () => {
+                    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                    initCamera(currentFacingMode);
+                });
+                
+                // Inicializar la cámara al cargar la página
+                window.addEventListener('DOMContentLoaded', () => {
+                    initCamera(currentFacingMode);
+                });
+            </script>
+
+            <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+            <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+        """
 
 
 class ConsolidatedAdmin(admin.ModelAdmin):
