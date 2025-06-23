@@ -236,302 +236,213 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
     def html_cam(self):
         return """
             <!-- HTML -->
-            <div class="canvas-container">
-                <video id="cameraView" autoplay playsinline></video>
-                <canvas id="overlay"></canvas>
-                <div id="personCount" class="person-count">Personas: 0</div>
-            </div>
-            
-            <button id="takePhotoBtn">Tomar Foto</button>
-            <button id="toggleCameraBtn">Cambiar Cámara</button>
-            
-            <div id="photoContainer" style="display: none;">
-                <h2>Foto Capturada</h2>
-                <canvas id="photoResult"></canvas>
-                <div id="results"></div>
-                <button id="retakeBtn">Volver a Tomar</button>
+            <div id="container">
+                <h1>Contador de Multitudes</h1>
+                <div class="canvas-container">
+                    <video id="video" autoplay playsinline muted></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+                <button id="startBtn">Iniciar Cámara</button>
+                <button id="countBtn" disabled>Contar Personas</button>
+                <div id="results">Personas detectadas: <span id="count">0</span></div>
+                <input type="file" id="fileInput" accept="image/*">
             </div>
 
             <!-- CSS -->
             <style>
-                #cameraView, #photoResult {
-                    width: 100%;
-                    max-width: 640px;
-                    margin: 10px auto;
-                    border: 2px solid #333;
-                    border-radius: 5px;
-                }
-                button {
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 10px 15px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    margin: 5px;
-                }
-                button:hover {
-                    background-color: #45a049;
-                }
-                #results {
-                    margin-top: 20px;
-                    font-size: 18px;
-                    font-weight: bold;
-                }
-                .canvas-container {
-                    position: relative;
-                    margin: 0 auto;
-                }
-                #overlay {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    height: 100%;
-                }
-                .person-count {
-                    position: absolute;
-                    top: 10px;
-                    left: 10px;
-                    background-color: rgba(0,0,0,0.7);
-                    color: white;
-                    padding: 5px 10px;
-                    border-radius: 5px;
-                    z-index: 100;
-                }
+                #container { display: flex; flex-direction: column; align-items: center; }
+                #video { border: 3px solid #333; width: 80%; max-width: 800px; width: 100% }
+                #canvas { position: absolute; left: 0px; width: 100%; height: 100%; top: 0px; }
+                .canvas-container { position: relative!important; width: fit-content; }
+                #results { font-size: 24px; margin: 20px; padding: 15px; background: #f0f0f0; }
+                .high-density { color: red; font-weight: bold; }
             </style>
-
-            <!-- JS -->
             <script>
-                // Elementos del DOM
-                const video = document.getElementById('cameraView');
-                const takePhotoBtn = document.getElementById('takePhotoBtn');
-                const toggleCameraBtn = document.getElementById('toggleCameraBtn');
-                const photoResult = document.getElementById('photoResult');
-                const photoContainer = document.getElementById('photoContainer');
+                // Configuración
+                const DETECTION_THRESHOLD = 0.5; // Umbral de confianza
+                const HIGH_DENSITY_THRESHOLD = 50; // Umbral para alta densidad
+                
+                // Elementos DOM
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                const countDisplay = document.getElementById('count');
                 const resultsDiv = document.getElementById('results');
-                const retakeBtn = document.getElementById('retakeBtn');
-                const overlay = document.getElementById('overlay');
-                const overlayCtx = overlay.getContext('2d');
-                const personCountDiv = document.getElementById('personCount');
-                const inPerson = document.querySelector('input[name="in_person"]');
-                if (!inPerson) {
-                    console.error("No se encontró el input #id_in_person");
+                let inPersonField = null; // Lo definiremos más tarde
+                
+                // Variables globales
+                let model;
+                let isModelLoading = false;
+                
+                // Función para esperar a que un elemento exista
+                function waitForElement(selector, callback, maxAttempts = 50, interval = 100) {
+                    let attempts = 0;
+                    const checkInterval = setInterval(() => {
+                        const element = document.getElementById(selector);
+                        attempts++;
+                        
+                        if (element) {
+                            clearInterval(checkInterval);
+                            callback(element);
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(checkInterval);
+                            console.warn(`Elemento ${selector} no encontrado después de ${maxAttempts} intentos`);
+                        }
+                    }, interval);
                 }
                 
-                // Variables de estado
-                let stream = null;
-                let currentFacingMode = 'user'; // 'user' para frontal, 'environment' para trasera
-                let model = null;
-                let detectionActive = true;
-                
-                // Inicializar la cámara
-                async function initCamera(facingMode) {
+                // Cargar modelo (COCO-SSD para cuerpo completo o CrowdCounting para multitudes)
+                async function loadModel() {
+                    if (isModelLoading) return;
+                    isModelLoading = true;
+                    
                     try {
-                        // Detener el stream actual si existe
-                        if (stream) {
-                            stream.getTracks().forEach(track => track.stop());
-                        }
+                        // Para multitudes muy densas (requiere modelo especializado)
+                        // model = await tf.loadGraphModel('https://tfhub.dev/tensorflow/tfjs-model/crowdcounting/megdet/1');
                         
-                        // Obtener acceso a la cámara
-                        stream = await navigator.mediaDevices.getUserMedia({
-                            video: { 
-                                facingMode: facingMode,
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 }
+                        // Para detección general (menos preciso en alta densidad)
+                        model = await cocoSsd.load();
+                        
+                        console.log('Modelo cargado');
+                        document.getElementById('countBtn').disabled = false;
+                    } catch (err) {
+                        console.error('Error al cargar modelo:', err);
+                    } finally {
+                        isModelLoading = false;
+                    }
+                }
+                
+                // Iniciar cámara
+                document.getElementById('startBtn').addEventListener('click', async () => {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 }
                             },
                             audio: false
                         });
-                        
                         video.srcObject = stream;
                         
-                        // Ajustar el overlay al tamaño del video
+                        // Ajustar canvas al tamaño del video
                         video.onloadedmetadata = () => {
-                            overlay.width = video.videoWidth;
-                            overlay.height = video.videoHeight;
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
                         };
                         
-                        // Cargar el modelo de detección de objetos COCO-SSD
-                        if (!model) {
-                            model = await cocoSsd.load();
-                        }
-                        
-                        // Iniciar detección en tiempo real
-                        detectPeopleRealTime();
-                        
+                        // Cargar modelo automáticamente
+                        loadModel();
                     } catch (err) {
-                        console.error("Error al acceder a la cámara:", err);
-                        alert("No se pudo acceder a la cámara. Asegúrate de permitir el acceso.");
+                        console.error('Error al acceder a la cámara:', err);
+                        alert('No se pudo acceder a la cámara');
                     }
-                }
+                });
                 
-                // Detectar personas en tiempo real
-                async function detectPeopleRealTime() {
-                    if (!model || !video.readyState || !detectionActive) return;
-                    
-                    // Realizar la detección
-                    const predictions = await model.detect(video);
-                    
-                    // Filtrar solo las detecciones de personas (clase 'person')
-                    const people = predictions.filter(pred => pred.class === 'person');
-                    
-                    // Actualizar el contador
-                    personCountDiv.textContent = `Personas: ${people.length}`;
-                    
-                    // Dibujar sobre el overlay
-                    overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
-                    
-                    if (people.length > 0) {
-                        overlayCtx.strokeStyle = 'red';
-                        overlayCtx.lineWidth = 2;
-                        overlayCtx.font = '16px Arial';
-                        overlayCtx.fillStyle = 'red';
-                        
-                        people.forEach((person, i) => {
-                            // Dibujar rectángulo alrededor de la persona
-                            const [x, y, width, height] = person.bbox;
-                            
-                            overlayCtx.strokeRect(x, y, width, height);
-                            overlayCtx.fillText(`Persona ${i+1}`, x, y > 20 ? y - 5 : 20);
-                            
-                            // Opcional: dibujar puntos clave si están disponibles
-                            if (person.keypoints) {
-                                overlayCtx.fillStyle = 'blue';
-                                person.keypoints.forEach(keypoint => {
-                                    if (keypoint.score > 0.5) {
-                                        overlayCtx.beginPath();
-                                        overlayCtx.arc(keypoint.x, keypoint.y, 3, 0, 2 * Math.PI);
-                                        overlayCtx.fill();
-                                    }
-                                });
-                                overlayCtx.fillStyle = 'red';
-                            }
-                        });
-                    }
-                    
-                    // Continuar la detección
-                    requestAnimationFrame(detectPeopleRealTime);
-                }
-                
-                // Tomar foto y procesarla
-                takePhotoBtn.addEventListener('click', async () => {
-                    // Pausar la detección en tiempo real
-                    detectionActive = false;
-                    
-                    // Ajustar el canvas de resultado al tamaño del video
-                    photoResult.width = video.videoWidth;
-                    photoResult.height = video.videoHeight;
-                    
-                    // Dibujar la imagen del video en el canvas
-                    const ctx = photoResult.getContext('2d');
-                    ctx.drawImage(video, 0, 0, photoResult.width, photoResult.height);
-                    
-                    // Ocultar la vista de la cámara y mostrar la foto
-                    video.style.display = 'none';
-                    overlay.style.display = 'none';
-                    photoContainer.style.display = 'block';
-                    
-                    // Detectar personas en la foto
+                // Procesar imagen/video
+                async function detectPeople() {
                     if (!model) {
-                        model = await cocoSsd.load();
-                    }
-
-                    const predictions = await model.detect(photoResult);
-                    const people = predictions.filter(pred => pred.class === 'person');
-                    
-                    // Dibujar los resultados en la foto
-                    if (people.length > 0) {
-                        ctx.strokeStyle = 'red';
-                        ctx.lineWidth = 2;
-                        ctx.font = '16px Arial';
-                        ctx.fillStyle = 'red';
-                        
-                        people.forEach((person, i) => {
-                            const [x, y, width, height] = person.bbox;
-                            
-                            ctx.strokeRect(x, y, width, height);
-                            ctx.fillText(`Persona ${i+1}`, x, y > 20 ? y - 5 : 20);
-                            
-                            // Opcional: dibujar puntos clave si están disponibles
-                            if (person.keypoints) {
-                                ctx.fillStyle = 'blue';
-                                person.keypoints.forEach(keypoint => {
-                                    if (keypoint.score > 0.5) {
-                                        ctx.beginPath();
-                                        ctx.arc(keypoint.x, keypoint.y, 3, 0, 2 * Math.PI);
-                                        ctx.fill();
-                                    }
-                                });
-                                ctx.fillStyle = 'red';
-                            }
-                        });
-                    }
-                    
-                    // Mostrar el número de personas detectadas
-                    resultsDiv.textContent = `Personas detectadas: ${people.length}`;
-                    console.log('uy')
-                    console.log(people.length);
-                    if (inPerson) {
-                        inPerson.value = people.length;
-                    }
-                    
-                });
-                
-                // Volver a tomar foto
-                retakeBtn.addEventListener('click', () => {
-                    photoContainer.style.display = 'none';
-                    video.style.display = 'block';
-                    overlay.style.display = 'block';
-                    detectionActive = true;
-                    detectPeopleRealTime();
-                });
-                
-                // Cambiar entre cámara frontal y trasera
-                toggleCameraBtn.addEventListener('click', () => {
-                    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-                    initCamera(currentFacingMode);
-                });
-                
-                // Inicializar la cámara al cargar la página
-                window.addEventListener('DOMContentLoaded', () => {
-                    initCamera(currentFacingMode);
-                    setTimeout(() => {
-                    const inPerson = document.querySelector('input[name="in_person"]');
-                    if (!inPerson) {
-                        console.error("No se encontró el input #id_in_person");
+                        alert('Modelo no cargado aún');
                         return;
                     }
-
-                    // Mueve aquí el listener para tomar la foto y asignar el valor
-                    takePhotoBtn.addEventListener('click', async () => {
-                        detectionActive = false;
-                        photoResult.width = video.videoWidth;
-                        photoResult.height = video.videoHeight;
-                        const ctx = photoResult.getContext('2d');
-                        ctx.drawImage(video, 0, 0, photoResult.width, photoResult.height);
-
-                        video.style.display = 'none';
-                        overlay.style.display = 'none';
-                        photoContainer.style.display = 'block';
-
-                        if (!model) {
-                            model = await cocoSsd.load();
+                    
+                    // Para video: usar el frame actual
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // Realizar detección
+                    try {
+                        const predictions = await model.detect(video);
+                        
+                        // Filtrar solo personas con alta confianza
+                        const people = predictions.filter(
+                            p => p.class === 'person' && p.score >= DETECTION_THRESHOLD
+                        );
+                        
+                        // Actualizar UI
+                        countDisplay.textContent = people.length;
+                        
+                        // Actualizar campo in_person si existe
+                        if (inPersonField) {
+                            inPersonField.value = people.length;
+                        } else {
+                            console.warn('Campo in_person no encontrado');
+                            // Intentar encontrarlo nuevamente
+                            waitForElement('id_in_person', (element) => {
+                                inPersonField = element;
+                                inPersonField.value = people.length;
+                            });
                         }
-
-                        const predictions = await model.detect(photoResult);
-                        const people = predictions.filter(pred => pred.class === 'person');
-
-                        // ... dibujar resultados ...
-
-                        resultsDiv.textContent = `Personas detectadas: ${people.length}`;
-                        inPerson.value = people.length;
-                    });
-                }, 1000);
+                        
+                        // Resaltar si es alta densidad
+                        if (people.length >= HIGH_DENSITY_THRESHOLD) {
+                            resultsDiv.classList.add('high-density');
+                        } else {
+                            resultsDiv.classList.remove('high-density');
+                        }
+                        
+                        // Dibujar bounding boxes
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        people.forEach(person => {
+                            const [x, y, width, height] = person.bbox;
+                            
+                            // Dibujar rectángulo
+                            ctx.strokeStyle = '#00FF00';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(x, y, width, height);
+                            
+                            // Etiqueta con confianza
+                            ctx.fillStyle = '#00FF00';
+                            ctx.font = '16px Arial';
+                            ctx.fillText(
+                                `${person.class} (${Math.round(person.score * 100)}%)`,
+                                x,
+                                y > 10 ? y - 5 : 10
+                            );
+                        });
+                        
+                    } catch (err) {
+                        console.error('Error en detección:', err);
+                    }
+                }
+                
+                // Evento para contar
+                document.getElementById('countBtn').addEventListener('click', detectPeople);
+                
+                // Procesar imagen subida
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            loadModel(); // Asegurar que el modelo esté cargado
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
                 });
+                
+                // Esperar a que el elemento in_person exista
+                waitForElement('id_in_person', (element) => {
+                    inPersonField = element;
+                    console.log('Campo in_person encontrado y asignado');
+                });
+                
+                // Cargar modelo al iniciar
+                window.addEventListener('load', loadModel);
             </script>
 
             <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
             <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+            <!-- Alternativa para alta densidad: -->
+            <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/crowdcounting"></script>
         """
 
 
