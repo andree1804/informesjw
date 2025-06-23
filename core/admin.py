@@ -243,6 +243,7 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                     <canvas id="canvas"></canvas>
                 </div>
                 <button id="startBtn">Iniciar Cámara</button>
+                <button id="toggleCameraBtn">Cambiar a Cámara Trasera</button>
                 <button id="countBtn" disabled>Contar Personas</button>
                 <div id="results">Personas detectadas: <span id="count">0</span></div>
                 <input type="file" id="fileInput" accept="image/*">
@@ -259,8 +260,8 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
             </style>
             <script>
                 // Configuración
-                const DETECTION_THRESHOLD = 0.5; // Umbral de confianza
-                const HIGH_DENSITY_THRESHOLD = 50; // Umbral para alta densidad
+                const DETECTION_THRESHOLD = 0.5;
+                const HIGH_DENSITY_THRESHOLD = 50;
                 
                 // Elementos DOM
                 const video = document.getElementById('video');
@@ -268,42 +269,88 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                 const ctx = canvas.getContext('2d');
                 const countDisplay = document.getElementById('count');
                 const resultsDiv = document.getElementById('results');
-                let inPersonField = null; // Lo definiremos más tarde
+                const toggleCameraBtn = document.getElementById('toggleCameraBtn'); // Nuevo botón
+                let inPersonField = null;
                 
                 // Variables globales
                 let model;
                 let isModelLoading = false;
-                
-                // Función para esperar a que un elemento exista
-                function waitForElement(selector, callback, maxAttempts = 50, interval = 100) {
-                    let attempts = 0;
-                    const checkInterval = setInterval(() => {
-                        const element = document.getElementById(selector);
-                        attempts++;
-                        
-                        if (element) {
-                            clearInterval(checkInterval);
-                            callback(element);
-                        } else if (attempts >= maxAttempts) {
-                            clearInterval(checkInterval);
-                            console.warn(`Elemento ${selector} no encontrado después de ${maxAttempts} intentos`);
-                        }
-                    }, interval);
+                let currentStream = null;
+                let facingMode = 'user'; // 'user' (frontal) o 'environment' (trasera)
+
+                // Función para esperar elemento
+                function waitForElement(selector, callback) {
+                    const element = document.getElementById(selector);
+                    if (element) {
+                        callback(element);
+                    } else {
+                        setTimeout(() => waitForElement(selector, callback), 100);
+                    }
                 }
-                
-                // Cargar modelo (COCO-SSD para cuerpo completo o CrowdCounting para multitudes)
+
+                // Detener el stream actual
+                function stopMediaStream() {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                        currentStream = null;
+                    }
+                }
+
+                // Iniciar cámara con el modo especificado
+                async function startCamera(mode) {
+                    stopMediaStream(); // Detener cámara actual
+                    
+                    try {
+                        const constraints = {
+                            video: {
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 },
+                                facingMode: mode
+                            },
+                            audio: false
+                        };
+
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        currentStream = stream;
+                        video.srcObject = stream;
+                        facingMode = mode;
+
+                        // Ajustar canvas al video
+                        video.onloadedmetadata = () => {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                        };
+
+                        return true;
+                    } catch (err) {
+                        console.error(`Error al iniciar cámara (${mode}):`, err);
+                        return false;
+                    }
+                }
+
+                // Alternar entre cámaras frontal/trasera
+                async function toggleCamera() {
+                    const newMode = facingMode === 'user' ? 'environment' : 'user';
+                    const success = await startCamera(newMode);
+                    
+                    if (success) {
+                        toggleCameraBtn.textContent = `Cámara ${newMode === 'user' ? 'Trasera' : 'Frontal'}`;
+                    } else {
+                        // Si falla, intentar con el modo opuesto
+                        const fallbackMode = newMode === 'user' ? 'environment' : 'user';
+                        if (await startCamera(fallbackMode)) {
+                            toggleCameraBtn.textContent = `Cámara ${fallbackMode === 'user' ? 'Trasera' : 'Frontal'}`;
+                        }
+                    }
+                }
+
+                // Cargar modelo
                 async function loadModel() {
                     if (isModelLoading) return;
                     isModelLoading = true;
                     
                     try {
-                        // Para multitudes muy densas (requiere modelo especializado)
-                        // model = await tf.loadGraphModel('https://tfhub.dev/tensorflow/tfjs-model/crowdcounting/megdet/1');
-                        
-                        // Para detección general (menos preciso en alta densidad)
                         model = await cocoSsd.load();
-                        
-                        console.log('Modelo cargado');
                         document.getElementById('countBtn').disabled = false;
                     } catch (err) {
                         console.error('Error al cargar modelo:', err);
@@ -311,88 +358,42 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                         isModelLoading = false;
                     }
                 }
-                
-                // Iniciar cámara
-                document.getElementById('startBtn').addEventListener('click', async () => {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                width: { ideal: 1920 },
-                                height: { ideal: 1080 }
-                            },
-                            audio: false
-                        });
-                        video.srcObject = stream;
-                        
-                        // Ajustar canvas al tamaño del video
-                        video.onloadedmetadata = () => {
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                        };
-                        
-                        // Cargar modelo automáticamente
-                        loadModel();
-                    } catch (err) {
-                        console.error('Error al acceder a la cámara:', err);
-                        alert('No se pudo acceder a la cámara');
-                    }
-                });
-                
-                // Procesar imagen/video
+
+                // Detección de personas
                 async function detectPeople() {
                     if (!model) {
                         alert('Modelo no cargado aún');
                         return;
                     }
                     
-                    // Para video: usar el frame actual
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    
-                    // Realizar detección
                     try {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         const predictions = await model.detect(video);
                         
-                        // Filtrar solo personas con alta confianza
                         const people = predictions.filter(
                             p => p.class === 'person' && p.score >= DETECTION_THRESHOLD
                         );
                         
-                        // Actualizar UI
                         countDisplay.textContent = people.length;
                         
-                        // Actualizar campo in_person si existe
                         if (inPersonField) {
                             inPersonField.value = people.length;
                         } else {
-                            console.warn('Campo in_person no encontrado');
-                            // Intentar encontrarlo nuevamente
-                            waitForElement('id_in_person', (element) => {
-                                inPersonField = element;
+                            waitForElement('id_in_person', (el) => {
+                                inPersonField = el;
                                 inPersonField.value = people.length;
                             });
                         }
-                        
-                        // Resaltar si es alta densidad
-                        if (people.length >= HIGH_DENSITY_THRESHOLD) {
-                            resultsDiv.classList.add('high-density');
-                        } else {
-                            resultsDiv.classList.remove('high-density');
-                        }
-                        
+
                         // Dibujar bounding boxes
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         
                         people.forEach(person => {
                             const [x, y, width, height] = person.bbox;
-                            
-                            // Dibujar rectángulo
                             ctx.strokeStyle = '#00FF00';
                             ctx.lineWidth = 2;
                             ctx.strokeRect(x, y, width, height);
-                            
-                            // Etiqueta con confianza
                             ctx.fillStyle = '#00FF00';
                             ctx.font = '16px Arial';
                             ctx.fillText(
@@ -406,10 +407,17 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                         console.error('Error en detección:', err);
                     }
                 }
-                
-                // Evento para contar
+
+                // Event Listeners
+                document.getElementById('startBtn').addEventListener('click', async () => {
+                    if (await startCamera(facingMode)) {
+                        loadModel();
+                    }
+                });
+
+                toggleCameraBtn.addEventListener('click', toggleCamera);
                 document.getElementById('countBtn').addEventListener('click', detectPeople);
-                
+
                 // Procesar imagen subida
                 document.getElementById('fileInput').addEventListener('change', (e) => {
                     const file = e.target.files[0];
@@ -422,21 +430,18 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
                             canvas.width = img.width;
                             canvas.height = img.height;
                             ctx.drawImage(img, 0, 0);
-                            loadModel(); // Asegurar que el modelo esté cargado
+                            loadModel();
                         };
                         img.src = event.target.result;
                     };
                     reader.readAsDataURL(file);
                 });
-                
-                // Esperar a que el elemento in_person exista
-                waitForElement('id_in_person', (element) => {
-                    inPersonField = element;
-                    console.log('Campo in_person encontrado y asignado');
+
+                // Inicialización
+                waitForElement('id_in_person', (el) => inPersonField = el);
+                window.addEventListener('load', () => {
+                    startCamera(facingMode).then(loadModel);
                 });
-                
-                // Cargar modelo al iniciar
-                window.addEventListener('load', loadModel);
             </script>
 
             <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
