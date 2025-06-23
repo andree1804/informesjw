@@ -215,6 +215,13 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
         return (obj.in_person or 0) + (obj.virtual or 0)
     total_attendance.short_description = 'Total'
 
+    def save_model(self, request, obj, form, change):
+        if obj.in_person is None:
+            obj.in_person = 0
+        if obj.virtual is None:
+            obj.virtual = 0
+        super().save_model(request, obj, form, change)
+
 
 class ConsolidatedAdmin(admin.ModelAdmin):
     list_display = ('person', 'group', 'privilege', 'month', 'year')

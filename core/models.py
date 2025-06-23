@@ -52,12 +52,12 @@ class Report(models.Model):
 class PersonVirtual(models.Model):
     in_person = models.PositiveIntegerField(
         "Asistencia Presencial",
-        default=0,
+        blank=True,
         validators=[MinValueValidator(0)]
     )
     virtual = models.PositiveIntegerField(
         "Asistencia Zoom",
-        default=0,
+        blank=True,
         validators=[MinValueValidator(0)]
     )
     meeting_date = models.DateField("Fecha de reunión")
