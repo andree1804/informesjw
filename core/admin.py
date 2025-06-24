@@ -21,6 +21,11 @@ from django.utils.formats import date_format
 from django.utils.timezone import localtime
 from django.utils.safestring import mark_safe
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import base64
+import requests
+
 
 class ReportAdmin(admin.ModelAdmin):
     change_list_template = "admin/reportes_por_grupo.html"
@@ -223,232 +228,60 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
             obj.virtual = 0
         super().save_model(request, obj, form, change)
 
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['mi_html_extra'] = mark_safe(self.html_cam())
-        return super().add_view(request, form_url, extra_context=extra_context)
+    '''def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('add-image/', self.admin_site.admin_view(self.add_image), name='personvirtual_add'),
+        ]
+        return custom_urls + urls
+    
+    @csrf_exempt
+    def add_image(self, request):
+        if request.method == 'POST' and request.FILES.get('image'):
+            try:
+                # 1. Configuración Roboflow
+                api_key = "9pl2Yoxz8KxtvOIJ7SY4"
+                workspace = "andree1804"
+                model_name = "yolov8-person-detection"
+                version = "7"
 
-    def add_view(self, request, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['mi_html_extra'] = mark_safe(self.html_cam())
-        return super().add_view(request, form_url, extra_context=extra_context)
+                # 1. Construir URL
+                url = f"https://detect.roboflow.com/{model_name}/{version}?api_key={api_key}"
 
-    def html_cam(self):
-        return """
-            <!-- HTML -->
-            <div id="container">
-                <h1>Contador de Multitudes</h1>
-                <div class="canvas-container">
-                    <video id="video" autoplay playsinline muted></video>
-                    <canvas id="canvas"></canvas>
-                </div>
-                <button id="startBtn">Iniciar Cámara</button>
-                <button id="toggleCameraBtn">Cambiar a Cámara Trasera</button>
-                <button id="countBtn" disabled>Contar Personas</button>
-                <div id="results">Personas detectadas: <span id="count">0</span></div>
-                <input type="file" id="fileInput" accept="image/*">
-            </div>
+                # 2. Leer la imagen desde request.FILES
+                image_file = request.FILES['image']
 
-            <!-- CSS -->
-            <style>
-                #container { display: flex; flex-direction: column; align-items: center; }
-                #video { border: 3px solid #333; width: 80%; max-width: 800px; width: 100% }
-                #canvas { position: absolute; left: 0px; width: 100%; height: 100%; top: 0px; }
-                .canvas-container { position: relative!important; width: fit-content; }
-                #results { font-size: 24px; margin: 20px; padding: 15px; background: #f0f0f0; }
-                .high-density { color: red; font-weight: bold; }
-            </style>
-            <script>
-                // Configuración
-                const DETECTION_THRESHOLD = 0.3;
-                const HIGH_DENSITY_THRESHOLD = 500;
+                # 3. Enviar POST con el archivo como multipart/form-data
+                response = requests.post(
+                    url,
+                    files={"file": image_file},
+                    data={"confidence": "0.5", "overlap": "0.3"},
+                    timeout=10
+                )
                 
-                // Elementos DOM
-                const video = document.getElementById('video');
-                const canvas = document.getElementById('canvas');
-                const ctx = canvas.getContext('2d');
-                const countDisplay = document.getElementById('count');
-                const resultsDiv = document.getElementById('results');
-                const toggleCameraBtn = document.getElementById('toggleCameraBtn'); // Nuevo botón
-                let inPersonField = null;
-                
-                // Variables globales
-                let model;
-                let isModelLoading = false;
-                let currentStream = null;
-                let facingMode = 'user'; // 'user' (frontal) o 'environment' (trasera)
-
-                // Función para esperar elemento
-                function waitForElement(selector, callback) {
-                    const element = document.getElementById(selector);
-                    if (element) {
-                        callback(element);
-                    } else {
-                        setTimeout(() => waitForElement(selector, callback), 100);
-                    }
-                }
-
-                // Detener el stream actual
-                function stopMediaStream() {
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop());
-                        currentStream = null;
-                    }
-                }
-
-                // Iniciar cámara con el modo especificado
-                async function startCamera(mode) {
-                    stopMediaStream(); // Detener cámara actual
+                # 4. Procesar respuesta
+                if response.status_code == 200:
+                    predictions = response.json().get('predictions', [])
+                    return JsonResponse({
+                        'success': True,
+                        'count': len(predictions)
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f"Error {response.status_code}: {response.text}"
+                    })
                     
-                    try {
-                        const constraints = {
-                            video: {
-                                width: { ideal: 1920 },
-                                height: { ideal: 1080 },
-                                facingMode: mode
-                            },
-                            audio: false
-                        };
-
-                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        currentStream = stream;
-                        video.srcObject = stream;
-                        facingMode = mode;
-
-                        // Ajustar canvas al video
-                        video.onloadedmetadata = () => {
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                        };
-
-                        return true;
-                    } catch (err) {
-                        console.error(`Error al iniciar cámara (${mode}):`, err);
-                        return false;
-                    }
-                }
-
-                // Alternar entre cámaras frontal/trasera
-                async function toggleCamera() {
-                    const newMode = facingMode === 'user' ? 'environment' : 'user';
-                    const success = await startCamera(newMode);
-                    
-                    if (success) {
-                        toggleCameraBtn.textContent = `Cámara ${newMode === 'user' ? 'Trasera' : 'Frontal'}`;
-                    } else {
-                        // Si falla, intentar con el modo opuesto
-                        const fallbackMode = newMode === 'user' ? 'environment' : 'user';
-                        if (await startCamera(fallbackMode)) {
-                            toggleCameraBtn.textContent = `Cámara ${fallbackMode === 'user' ? 'Trasera' : 'Frontal'}`;
-                        }
-                    }
-                }
-
-                // Cargar modelo
-                async function loadModel() {
-                    if (isModelLoading) return;
-                    isModelLoading = true;
-                    
-                    try {
-                        model = await cocoSsd.load();
-                        document.getElementById('countBtn').disabled = false;
-                    } catch (err) {
-                        console.error('Error al cargar modelo:', err);
-                    } finally {
-                        isModelLoading = false;
-                    }
-                }
-
-                // Detección de personas
-                async function detectPeople() {
-                    if (!model) {
-                        alert('Modelo no cargado aún');
-                        return;
-                    }
-                    
-                    try {
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const predictions = await model.detect(video);
-                        
-                        const people = predictions.filter(
-                            p => p.class === 'person' && p.score >= DETECTION_THRESHOLD
-                        );
-                        
-                        countDisplay.textContent = people.length;
-                        
-                        if (inPersonField) {
-                            inPersonField.value = people.length;
-                        } else {
-                            waitForElement('id_in_person', (el) => {
-                                inPersonField = el;
-                                inPersonField.value = people.length;
-                            });
-                        }
-
-                        // Dibujar bounding boxes
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        
-                        people.forEach(person => {
-                            const [x, y, width, height] = person.bbox;
-                            ctx.strokeStyle = '#00FF00';
-                            ctx.lineWidth = 2;
-                            ctx.strokeRect(x, y, width, height);
-                            ctx.fillStyle = '#00FF00';
-                            ctx.font = '16px Arial';
-                            ctx.fillText(
-                                `${person.class} (${Math.round(person.score * 100)}%)`,
-                                x,
-                                y > 10 ? y - 5 : 10
-                            );
-                        });
-                        
-                    } catch (err) {
-                        console.error('Error en detección:', err);
-                    }
-                }
-
-                // Event Listeners
-                document.getElementById('startBtn').addEventListener('click', async () => {
-                    if (await startCamera(facingMode)) {
-                        loadModel();
-                    }
-                });
-
-                toggleCameraBtn.addEventListener('click', toggleCamera);
-                document.getElementById('countBtn').addEventListener('click', detectPeople);
-
-                // Procesar imagen subida
-                document.getElementById('fileInput').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-                            loadModel();
-                        };
-                        img.src = event.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                });
-
-                // Inicialización
-                waitForElement('id_in_person', (el) => inPersonField = el);
-                window.addEventListener('load', () => {
-                    startCamera(facingMode).then(loadModel);
-                });
-            </script>
-
-            <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-            <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-            <!-- Alternativa para alta densidad: -->
-            <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/crowdcounting"></script>
-        """
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': str(e)
+                })
+        
+        return JsonResponse({
+            'success': False,
+            'error': 'No se recibió imagen válida'
+        })'''
 
 
 class ConsolidatedAdmin(admin.ModelAdmin):

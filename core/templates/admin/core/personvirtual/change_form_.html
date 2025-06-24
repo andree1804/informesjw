@@ -1,0 +1,77 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Añadir botón al formulario
+    const inPersonField = document.querySelector('.field-in_person');
+    if (inPersonField) {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="form-row">
+                <div>
+                    <label>Contar personas desde imagen:</label>
+                    <input type="file" id="personImage" accept="image/*" style="display:none;">
+                    <button type="button" class="button" id="selectImageBtn">Seleccionar Imagen</button>
+                    <span id="imageStatus" style="margin-left:10px;"></span>
+                </div>
+            </div>
+        `;
+        inPersonField.parentNode.insertBefore(container, inPersonField.nextSibling);
+
+        // 2. Manejar clic en el botón
+        document.getElementById('selectImageBtn').addEventListener('click', function() {
+            document.getElementById('personImage').click();
+        });
+
+        // 3. Procesar imagen seleccionada
+document.getElementById('personImage').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        const statusElement = document.getElementById('imageStatus');
+        statusElement.textContent = 'Procesando...';
+        statusElement.style.color = 'blue';
+
+        const formData = new FormData();
+        formData.append('image', e.target.files[0]);
+        
+        // Usar ruta absoluta para evitar confusiones
+        fetch('/admin/core/personvirtual/add-image/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => {
+            // Primero verificar el estado de la respuesta
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, response: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log(data);
+                document.getElementById('id_in_person').value = data.count;
+                statusElement.textContent = `Personas detectadas: ${data.count}`;
+                statusElement.style.color = 'green';
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        })
+        .catch(error => {
+            statusElement.textContent = `Error: ${error.message}`;
+            statusElement.style.color = 'red';
+            console.error('Error:', error);
+        });
+    }
+});
+    }
+});
+</script>
+{% endblock %}

@@ -1,8 +1,0 @@
-{% extends "admin/change_form.html" %}
-
-{% block content %}
-    {% if mi_html_extra %}
-        {{ mi_html_extra|safe }}
-    {% endif %}
-    {{ block.super }}
-{% endblock %}
