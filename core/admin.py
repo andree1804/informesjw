@@ -24,7 +24,7 @@ from django.utils.safestring import mark_safe
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import base64
-import requests
+#import requests
 
 
 class ReportAdmin(admin.ModelAdmin):
