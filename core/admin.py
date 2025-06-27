@@ -24,6 +24,8 @@ from django.utils.safestring import mark_safe
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import base64
+import calendar
+import locale
 #import requests
 
 
@@ -33,16 +35,16 @@ class ReportAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         #form = GroupSelectForm(request.GET or None)
         now = datetime.now()
-        meses = [
+        '''meses = [
             "enero", "febrero", "marzo", "abril", "mayo", "junio",
             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-        ]
+        ]'''
 
-        nombre_mes = meses[now.month - 2]
+        previous_month = now.month - 1
         persons = []
         group_id = request.GET.get('group')
-        selected_month = request.GET.get('month', str(nombre_mes.capitalize()))
-        selected_year = request.GET.get('year', str(now.year))
+        selected_month = request.GET.get('month', previous_month)
+        selected_year = request.GET.get('year', now.year)
         #current_month = request.GET.get('month_', str(now.month))
         #current_year = request.GET.get('year_', str(now.year))
 
@@ -296,17 +298,17 @@ class ConsolidatedAdmin(admin.ModelAdmin):
             month = request.GET.get('month')
             year = request.GET.get('year')
 
-            month_list = {
+            '''month_list = {
                 'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
                 'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
                 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
             }
 
-            month_int = month_list[month.lower()]
+            month_int = month_list[month.lower()]'''
             
             # Obtener datos consolidados
             reports = Report.objects.filter(month=month, year=year)
-            person_virtual = PersonVirtual.objects.filter(meeting_date__month=month_int, meeting_date__year=year)
+            person_virtual = PersonVirtual.objects.filter(meeting_date__month=month, meeting_date__year=year)
 
             # Filtrar solo sábados y domingos
             fines_de_semana = [
@@ -370,6 +372,7 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         return custom_urls + urls
     
     def generate_pdf_report(self, stats):
+        locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="informe_{stats["month"]}_{stats["year"]}.pdf"'
         
@@ -386,7 +389,7 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         p.drawString(100, 750, "PREDICACIÓN Y ASISTENCIA A LAS REUNIONES")
         
         # Fecha y actualización
-        p.drawString(100, 730, f"{stats['month']} de {stats['year']}")
+        p.drawString(100, 730, f"{calendar.month_name[int(stats['month'])].capitalize()} de {stats['year']}")
         p.drawString(100, 715, f"Actualizado por: {stats['updated_by']}")
         p.drawString(100, 700, f"Actualizado el: {stats['updated_date']}")
         

@@ -26,10 +26,10 @@ class Person(models.Model):
 
 class Report(models.Model):
     MONTH_CHOICES = [
-        ('Enero', 'Enero'), ('Febrero', 'Febrero'), ('Marzo', 'Marzo'),
-        ('Abril', 'Abril'), ('Mayo', 'Mayo'), ('Junio', 'Junio'),
-        ('Julio', 'Julio'), ('Agosto', 'Agosto'), ('Septiembre', 'Septiembre'),
-        ('Octubre', 'Octubre'), ('Noviembre', 'Noviembre'), ('Diciembre', 'Diciembre')
+        ('1', 'Enero'), ('2', 'Febrero'), ('3', 'Marzo'),
+        ('4', 'Abril'), ('5', 'Mayo'), ('6', 'Junio'),
+        ('7', 'Julio'), ('8', 'Agosto'), ('9', 'Septiembre'),
+        ('10', 'Octubre'), ('11', 'Noviembre'), ('12', 'Diciembre')
     ]
     person = models.ForeignKey('Person', on_delete=models.CASCADE)
     group = models.ForeignKey('Group', on_delete=models.CASCADE)

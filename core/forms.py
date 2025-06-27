@@ -3,14 +3,14 @@ from .models import Group
 import datetime
 
 class GroupSelectForm(forms.Form):
-    MONTH_CHOICES = [
+    '''MONTH_CHOICES = [
         ('Enero', 'Enero'), ('Febrero', 'Febrero'), ('Marzo', 'Marzo'),
         ('Abril', 'Abril'), ('Mayo', 'Mayo'), ('Junio', 'Junio'),
         ('Julio', 'Julio'), ('Agosto', 'Agosto'), ('Septiembre', 'Septiembre'),
         ('Octubre', 'Octubre'), ('Noviembre', 'Noviembre'), ('Diciembre', 'Diciembre')
-    ]
+    ]'''
 
-    MONTH_CHOICES_ = [
+    MONTH_CHOICES = [
         ('1', 'Enero'), ('2', 'Febrero'), ('3', 'Marzo'),
         ('4', 'Abril'), ('5', 'Mayo'), ('6', 'Junio'),
         ('7', 'Julio'), ('8', 'Agosto'), ('9', 'Septiembre'),
@@ -36,7 +36,7 @@ class GroupSelectForm(forms.Form):
     )
 
     month_ = forms.ChoiceField(
-        choices=MONTH_CHOICES_,
+        choices=MONTH_CHOICES,
         label="Mes",
         required=True
     )

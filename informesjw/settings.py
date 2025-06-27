@@ -104,7 +104,6 @@ DATABASES = {
         ssl_require=True
     )
 }
-
 CSRF_TRUSTED_ORIGINS = [
     'https://informesjw-master.up.railway.app',
 ]
