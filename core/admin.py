@@ -35,6 +35,10 @@ class ReportAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         #form = GroupSelectForm(request.GET or None)
         now = datetime.now()
+        if now.month == 1:  # Si es enero
+            previous_year = now.year - 1
+        else:
+            previous_year = now.year
         '''meses = [
             "enero", "febrero", "marzo", "abril", "mayo", "junio",
             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
@@ -44,7 +48,7 @@ class ReportAdmin(admin.ModelAdmin):
         persons = []
         group_id = request.GET.get('group')
         selected_month = request.GET.get('month', previous_month)
-        selected_year = request.GET.get('year', now.year)
+        selected_year = request.GET.get('year', previous_year)
         #current_month = request.GET.get('month_', str(now.month))
         #current_year = request.GET.get('year_', str(now.year))
 
@@ -128,6 +132,7 @@ class ReportAdmin(admin.ModelAdmin):
                 (groups.id, groups.name) if groups else ('', '---')
             ]
         context = {
+            **self.admin_site.each_context(request),
             'form': form,
             'persons': persons,
             'group_id': group_id,
@@ -137,6 +142,8 @@ class ReportAdmin(admin.ModelAdmin):
             'group': group_id,
             'month': selected_month,
             'year': selected_year,
+            'opts': self.model._meta,  # Necesario para el admin
+            'title': 'Informes de servicio',
         }
 
         if extra_context:
@@ -203,11 +210,14 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
         total_general = (totales['total_in_person'] or 0) + (totales['total_virtual'] or 0)
 
         context = {
+            **self.admin_site.each_context(request),
             'meses': meses,
             'total_in_person': totales['total_in_person'] or 0,
             'total_virtual': totales['total_virtual'] or 0,
             'total_general': total_general,
             'form': form,
+            'opts': self.model._meta,  # Necesario para el admin
+            'title': 'Asistencia a las reuniones'
         }
 
         if extra_context:
