@@ -53,8 +53,11 @@
 					  {% endfor %}
 					</select>
 		          </td>
-		          <td><input type="number" name="hours_{{ forloop.counter0 }}" value="{{ person.existing_report.hours }}" min="0"></td>
-		          <td><input type="number" name="courses_{{ forloop.counter0 }}" value="{{ person.existing_report.courses }}" min="0"></td>
+		          <td><input type="number" name="hours_{{ forloop.counter0 }}" 
+						       value="{% if person.existing_report.hours != 0 %}{{ person.existing_report.hours }}{% endif %}" 
+						       min="0"></td>
+		          <td><input type="number" name="courses_{{ forloop.counter0 }}" 
+		          		 value="{% if person.existing_report.courses != 0 %}{{ person.existing_report.courses }}{% endif %}" min="0"></td>
 		          <td><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}></td>
 		        </tr>
 		        {% endfor %}
@@ -124,56 +127,144 @@
 		    font-size: 10px;
 		}
 	}
+
+	/* Eliminar el estilo nativo del checkbox */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+}
+
+/* Checkbox marcado (no disabled) */
+input[type="checkbox"]:checked {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+}
+
+/* Checkbox disabled (sin marcar) */
+input[type="checkbox"]:disabled {
+  background-color: #f0f8ff; /* Color azul claro de fondo */
+  border-color: #4682b4 !important; /* Color azul del borde */
+  cursor: not-allowed;
+}
+
+/* Checkbox disabled y marcado */
+input[type="checkbox"]:disabled:checked {
+  background-color: #1e90ff !important; /* Azul más intenso */
+  border-color: #1e90ff !important;
+  opacity: 0.8;
+}
+
+/* Checkmark personalizado */
+input[type="checkbox"]:checked::before {
+  content: "✓";
+  position: absolute;
+  color: white;
+  font-size: 14px;
+  left: 2px;
+  top: -2px;
+}
+
+/* Checkmark para disabled */
+input[type="checkbox"]:disabled:checked::before {
+  color: rgba(255, 255, 255, 0.9);
+}
   </style>
 
 <script type="text/javascript">
-	document.addEventListener('DOMContentLoaded', function() {
-	    // Get all table rows (excluding header)
-	    const rows = document.querySelectorAll('.admin-table tbody tr');
-	    
-	    rows.forEach(row => {
-	        // Get the inputs for hours, courses, and participation checkbox
-	        const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
-	        const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
-	        const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
-	        
-	        // Function to check the box if either hours or courses has a value > 0
-	        const updateCheckbox = () => {
-	            const hoursValue = parseFloat(hoursInput.value) || 0;
-	            const coursesValue = parseFloat(coursesInput.value) || 0;
-	            
-	            // Check the box if either hours or courses is greater than 0
-	            participatedCheckbox.checked = hoursValue > 0 || coursesValue > 0;
-	        };
-	        
-	        // Add event listeners to both inputs
-	        hoursInput.addEventListener('input', updateCheckbox);
-	        hoursInput.addEventListener('change', updateCheckbox);
-	        coursesInput.addEventListener('input', updateCheckbox);
-	        coursesInput.addEventListener('change', updateCheckbox);
-
-
-
-	        const buscarInput = document.querySelector('input[name="buscar"]');
-		    const rows = document.querySelectorAll('.admin-table tbody tr');
-
-		    if (buscarInput) {
-		        buscarInput.addEventListener('input', function () {
-		            const filtro = buscarInput.value.toLowerCase();
-
-		            rows.forEach(row => {
-		                const nombreCelda = row.querySelector('td'); // primera columna
-		                const texto = nombreCelda?.textContent.toLowerCase() || '';
-		                
-		                if (texto.includes(filtro)) {
-		                    row.style.display = ''; // mostrar fila
-		                } else {
-		                    row.style.display = 'none'; // ocultar fila
-		                }
-		            });
-		        });
-		    }
-	    });
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.admin-table tbody tr');
+    
+    rows.forEach(row => {
+        const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
+        const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
+        const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
+        
+        // 1. Identificar checkboxes que vienen marcados desde BD
+        const isFromDB = participatedCheckbox.checked && 
+                        (parseFloat(hoursInput.value) || 0) === 0 && 
+                        (parseFloat(coursesInput.value) || 0) === 0;
+        
+        // 2. Rastrear si el usuario modificó los valores
+        let userModified = false;
+        
+        const updateCheckbox = () => {
+            const hoursValue = parseFloat(hoursInput.value) || 0;
+            const coursesValue = parseFloat(coursesInput.value) || 0;
+            const hasValues = hoursValue > 0 || coursesValue > 0;
+            
+            // Detectar modificación del usuario
+            if (!userModified) {
+                const hoursChanged = hoursValue !== (parseFloat(hoursInput.defaultValue) || 0);
+                const coursesChanged = coursesValue !== (parseFloat(coursesInput.defaultValue) || 0);
+                userModified = hoursChanged || coursesChanged;
+            }
+            
+            // 3. Lógica de actualización del checkbox
+            if (userModified) {
+                // Comportamiento para ediciones del usuario
+                participatedCheckbox.checked = hasValues;
+            }
+            // (Si no fue modificado por usuario y viene de BD, mantiene su valor)
+            
+            // 4. Manejo del estado disabled y envío POST
+            if (hasValues) {
+                participatedCheckbox.disabled = true;
+                
+                // Crear campo oculto para el envío POST
+                const hiddenName = participatedCheckbox.name + '_hidden';
+                let hiddenInput = row.querySelector(`input[name="${hiddenName}"]`);
+                
+                if (!hiddenInput) {
+                    hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = participatedCheckbox.name;
+                    hiddenInput.value = participatedCheckbox.checked ? 'on' : 'off';
+                    row.appendChild(hiddenInput);
+                }
+                
+                // Cambiar nombre del checkbox disabled
+                participatedCheckbox.name = participatedCheckbox.name + '_disabled';
+            } else {
+                participatedCheckbox.disabled = false;
+                
+                // Eliminar campo oculto si existe
+                const hiddenName = participatedCheckbox.name + '_hidden';
+                const hiddenInput = row.querySelector(`input[name="${hiddenName}"]`);
+                if (hiddenInput) hiddenInput.remove();
+                
+                // Restaurar nombre original
+                participatedCheckbox.name = participatedCheckbox.name.replace('_disabled', '');
+            }
+            
+            // 5. Estilos visuales
+            participatedCheckbox.style.opacity = participatedCheckbox.disabled ? '0.7' : '1';
+            participatedCheckbox.style.cursor = participatedCheckbox.disabled ? 'not-allowed' : 'pointer';
+        };
+        
+        // Event listeners
+        ['input', 'change'].forEach(event => {
+            hoursInput.addEventListener(event, () => {
+                userModified = true;
+                updateCheckbox();
+            });
+            coursesInput.addEventListener(event, () => {
+                userModified = true;
+                updateCheckbox();
+            });
+        });
+        
+        // Inicialización
+        updateCheckbox();
+    });
 });
 </script>
 {% endblock %}
