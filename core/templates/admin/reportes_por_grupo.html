@@ -53,7 +53,7 @@
 					  {% endfor %}
 					</select>
 		          </td>
-		          <td><input type="number" name="hours_{{ forloop.counter0 }}" 
+		          <td><input type="number" readonly name="hours_{{ forloop.counter0 }}" 
 						       value="{% if person.existing_report.hours != 0 %}{{ person.existing_report.hours }}{% endif %}" 
 						       min="0"></td>
 		          <td><input type="number" name="courses_{{ forloop.counter0 }}" 
@@ -182,75 +182,116 @@ input[type="checkbox"]:disabled:checked::before {
 <script type="text/javascript">
 document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('.admin-table tbody tr');
-    
+
     rows.forEach(row => {
         const hoursInput = row.querySelector('input[type="number"][name^="hours_"]');
         const coursesInput = row.querySelector('input[type="number"][name^="courses_"]');
         const participatedCheckbox = row.querySelector('input[type="checkbox"][name^="participated_"]');
-        
+        const privilegeSelect = row.querySelector('select[name^="privilege_"]');
+
         // 1. Identificar checkboxes que vienen marcados desde BD
-        const isFromDB = participatedCheckbox.checked && 
-                        (parseFloat(hoursInput.value) || 0) === 0 && 
-                        (parseFloat(coursesInput.value) || 0) === 0;
-        
+        const isFromDB = participatedCheckbox.checked &&
+            (parseFloat(hoursInput.value) || 0) === 0 &&
+            (parseFloat(coursesInput.value) || 0) === 0;
+
         // 2. Rastrear si el usuario modificó los valores
         let userModified = false;
-        
+
         const updateCheckbox = () => {
             const hoursValue = parseFloat(hoursInput.value) || 0;
             const coursesValue = parseFloat(coursesInput.value) || 0;
             const hasValues = hoursValue > 0 || coursesValue > 0;
-            
+
+            const selectedOption = privilegeSelect.options[privilegeSelect.selectedIndex];
+            const privilegeName = selectedOption.textContent.trim();
+
             // Detectar modificación del usuario
             if (!userModified) {
                 const hoursChanged = hoursValue !== (parseFloat(hoursInput.defaultValue) || 0);
                 const coursesChanged = coursesValue !== (parseFloat(coursesInput.defaultValue) || 0);
                 userModified = hoursChanged || coursesChanged;
             }
-            
+
             // 3. Lógica de actualización del checkbox
             if (userModified) {
-                // Comportamiento para ediciones del usuario
                 participatedCheckbox.checked = hasValues;
             }
-            // (Si no fue modificado por usuario y viene de BD, mantiene su valor)
-            
-            // 4. Manejo del estado disabled y envío POST
-            if (hasValues) {
-                participatedCheckbox.disabled = true;
-                
-                // Crear campo oculto para el envío POST
-                const hiddenName = participatedCheckbox.name + '_hidden';
-                let hiddenInput = row.querySelector(`input[name="${hiddenName}"]`);
-                
-                if (!hiddenInput) {
-                    hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = participatedCheckbox.name;
-                    hiddenInput.value = participatedCheckbox.checked ? 'on' : 'off';
-                    row.appendChild(hiddenInput);
-                }
-                
-                // Cambiar nombre del checkbox disabled
-                participatedCheckbox.name = participatedCheckbox.name + '_disabled';
-            } else {
-                participatedCheckbox.disabled = false;
-                
-                // Eliminar campo oculto si existe
-                const hiddenName = participatedCheckbox.name + '_hidden';
-                const hiddenInput = row.querySelector(`input[name="${hiddenName}"]`);
-                if (hiddenInput) hiddenInput.remove();
-                
-                // Restaurar nombre original
-                participatedCheckbox.name = participatedCheckbox.name.replace('_disabled', '');
-            }
-            
+
+						// 4. Manejo del estado disabled y envío POST
+						const hiddenName = participatedCheckbox.name;
+						let hiddenInput = row.querySelector(`input[type="hidden"][name="${hiddenName}"]`);
+
+						if (hasValues) {
+						    participatedCheckbox.disabled = true;
+
+						    if (!hiddenInput) {
+						        console.log('create hidden input');
+						        hiddenInput = document.createElement('input');
+						        hiddenInput.type = 'hidden';
+						        hiddenInput.name = participatedCheckbox.name;
+						        hiddenInput.value = participatedCheckbox.checked ? 'on' : 'off';
+						        hiddenInput.dataset.generated = "true";
+						        row.appendChild(hiddenInput);
+						    } else {
+						        // Si ya existe, actualiza su valor por si cambió el checkbox
+						        hiddenInput.value = participatedCheckbox.checked ? 'on' : 'off';
+						    }
+						} else {
+								if (privilegeName === '-') {
+									participatedCheckbox.disabled = true;
+								} else {
+									participatedCheckbox.disabled = false;
+								}
+						    // Eliminar solo si fue generado automáticamente
+						    if (hiddenInput && hiddenInput.dataset.generated === "true") {
+						        hiddenInput.remove();
+						    }
+						}
+
+
             // 5. Estilos visuales
             participatedCheckbox.style.opacity = participatedCheckbox.disabled ? '0.7' : '1';
             participatedCheckbox.style.cursor = participatedCheckbox.disabled ? 'not-allowed' : 'pointer';
         };
-        
-        // Event listeners
+
+        // 6. Función para manejar cambios en el select de privilegio
+        const updateHoursReadonly = () => {
+            const selectedOption = privilegeSelect.options[privilegeSelect.selectedIndex];
+            const privilegeName = selectedOption.textContent.trim();
+
+            if (privilegeName === 'Publicador') {
+                hoursInput.readOnly = true;
+                coursesInput.readOnly = false;
+                participatedCheckbox.disabled = false;
+                hoursInput.value = '';
+            } else if (privilegeName === 'Auxiliar' || privilegeName === 'PR') {
+                hoursInput.readOnly = false;
+                coursesInput.readOnly = false;
+                participatedCheckbox.disabled = false;
+            } else if (privilegeName === '-') {
+            	console.log(participatedCheckbox)
+            	participatedCheckbox.disabled = true;
+                // Reset inputs
+                hoursInput.value = '';
+                coursesInput.value = '';
+                participatedCheckbox.checked = false;
+                
+
+                hoursInput.readOnly = true;
+                coursesInput.readOnly = true;
+
+                // Eliminar hidden correspondiente si fue creado automáticamente
+                const hiddenInput = row.querySelector(`input[name="${participatedCheckbox.name}"]`);
+                if (hiddenInput && hiddenInput.dataset.generated === "true") {
+                    hiddenInput.remove();
+                }
+            }
+
+            // Forzar evaluación después del cambio
+            updateCheckbox();
+        };
+
+        // 7. Escuchar cambios en hours/courses
         ['input', 'change'].forEach(event => {
             hoursInput.addEventListener(event, () => {
                 userModified = true;
@@ -261,30 +302,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateCheckbox();
             });
         });
-        
-        // Inicialización
+
+        // 8. Escuchar cambios en privilege
+        privilegeSelect.addEventListener('change', () => {
+            updateHoursReadonly();
+
+            // Asegurar que la opción quede seleccionada
+            privilegeSelect.querySelectorAll('option').forEach(opt => opt.removeAttribute('selected'));
+            privilegeSelect.options[privilegeSelect.selectedIndex].setAttribute('selected', 'selected');
+        });
+
+        // 9. Inicializar estado
+        updateHoursReadonly();
         updateCheckbox();
-
-        const buscarInput = document.querySelector('input[name="buscar"]');
-		    const rows = document.querySelectorAll('.admin-table tbody tr');
-
-		    if (buscarInput) {
-		        buscarInput.addEventListener('input', function () {
-		            const filtro = buscarInput.value.toLowerCase();
-
-		            rows.forEach(row => {
-		                const nombreCelda = row.querySelector('td'); // primera columna
-		                const texto = nombreCelda?.textContent.toLowerCase() || '';
-		                
-		                if (texto.includes(filtro)) {
-		                    row.style.display = ''; // mostrar fila
-		                } else {
-		                    row.style.display = 'none'; // ocultar fila
-		                }
-		            });
-		        });
-		    }
     });
+
+    // === Filtro por nombre ===
+    const buscarInput = document.querySelector('input[name="buscar"]');
+    const allRows = document.querySelectorAll('.admin-table tbody tr');
+
+    if (buscarInput) {
+        buscarInput.addEventListener('input', function () {
+            const filtro = buscarInput.value.toLowerCase();
+            allRows.forEach(row => {
+                const nombreCelda = row.querySelector('td');
+                const texto = nombreCelda?.textContent.toLowerCase() || '';
+                row.style.display = texto.includes(filtro) ? '' : 'none';
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

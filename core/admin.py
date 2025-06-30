@@ -79,6 +79,8 @@ class ReportAdmin(admin.ModelAdmin):
 
             for person in persons:
                 person.existing_report = report_map.get(person.id)
+                if person.existing_report:
+                    person.privilege = person.existing_report.privilege  # <--- esta línea es CLAVE
 
         if request.method == "POST":
             group_id = request.POST.get('group')
@@ -99,16 +101,16 @@ class ReportAdmin(admin.ModelAdmin):
 
                 try:
                     person = Person.objects.get(pk=person_id)
-                    privilege = Privilege.objects.get(pk=int(request.POST.get(f'privilege_{i}')))
+                    privilege_id = request.POST.get(f'privilege_{i}')
+                    privilege = Privilege.objects.get(pk=int(privilege_id)) if privilege_id else None
+
                     courses_str = request.POST.get(f'courses_{i}', '0')
-                    courses = int(courses_str) if courses_str.strip().isdigit() else 0
                     hours_str = request.POST.get(f'hours_{i}', '0')
+                    courses = int(courses_str) if courses_str.strip().isdigit() else 0
                     hours = int(hours_str) if hours_str.strip().isdigit() else 0
-                    #courses = int(request.POST.get(f'courses_{i}', 0))
-                    #hours = int(request.POST.get(f'hours_{i}', 0))
                     participated = f'participated_{i}' in request.POST
 
-                    Report.objects.update_or_create(
+                    report, created = Report.objects.get_or_create(
                         person=person,
                         month=selected_month,
                         year=selected_year,
@@ -120,6 +122,14 @@ class ReportAdmin(admin.ModelAdmin):
                             'participated': participated
                         }
                     )
+
+                    if not created:
+                        report.group = group
+                        report.privilege = privilege
+                        report.courses = courses
+                        report.hours = hours
+                        report.participated = participated
+                        report.save()
                 except Exception as e:
                     messages.error(request, f"Error al guardar para ID {person_id}: {str(e)}")
 
