@@ -264,6 +264,26 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Inicialización
         updateCheckbox();
+
+        const buscarInput = document.querySelector('input[name="buscar"]');
+		    const rows = document.querySelectorAll('.admin-table tbody tr');
+
+		    if (buscarInput) {
+		        buscarInput.addEventListener('input', function () {
+		            const filtro = buscarInput.value.toLowerCase();
+
+		            rows.forEach(row => {
+		                const nombreCelda = row.querySelector('td'); // primera columna
+		                const texto = nombreCelda?.textContent.toLowerCase() || '';
+		                
+		                if (texto.includes(filtro)) {
+		                    row.style.display = ''; // mostrar fila
+		                } else {
+		                    row.style.display = 'none'; // ocultar fila
+		                }
+		            });
+		        });
+		    }
     });
 });
 </script>
