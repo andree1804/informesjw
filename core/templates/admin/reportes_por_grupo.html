@@ -19,7 +19,7 @@
   {% if persons %}
   <form method="post">
     {% csrf_token %}
-	<div>
+	<div class="table-report" style="position: relative;">
 	    <fieldset class="module aligned ">
 		    <input type="hidden" name="total" value="{{ persons|length }}">
 		    <table class="admin-table" style="width: 100%; margin-top: 20px;">
@@ -82,12 +82,19 @@
 				{% endif %}
 			{% endif %}
 	    </div>
+	    {% if request.user.username != 'admin' %}
+	    <div class="block" id="bloqueo">
+			  Acceso restringido por antigüedad de fecha y no podras editar
+			</div>
+			{% endif %}
 	</div>
   </form>
   {% else %}
     <p style="margin-top: 20px;">Selecciona un grupo, mes y año para comenzar.</p>
   {% endif %}
 </div>
+
+
   <style type="text/css">
   	/* Reducir el ancho de los inputs de texto */
 	input[type="password"], 
@@ -177,6 +184,22 @@ input[type="checkbox"]:checked::before {
 input[type="checkbox"]:disabled:checked::before {
   color: rgba(255, 255, 255, 0.9);
 }
+
+.block {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5); /* semitransparente */
+      z-index: 9999;
+      display: none; /* oculto por defecto */
+      justify-content: center;
+      color: white;
+      backdrop-filter: blur(0.6px);
+      padding-top: 18%;
+      font-size: 20px;
+    	text-align: center;
+    }
   </style>
 
 <script type="text/javascript">
@@ -332,5 +355,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+const id_month = document.getElementById('id_month');
+const id_year = document.getElementById('id_year');
+
+// Reemplaza esta fecha con la que quieras comparar
+const fechaAValidar = new Date(id_year.value + '-' + id_month.value);
+
+// Obtener fecha actual y restar 2 meses
+const hoy = new Date();
+const limite = new Date(hoy.getFullYear(), hoy.getMonth() - 1);
+
+// Comparar fechas
+if (fechaAValidar < limite) {
+  const bloqueo = document.getElementById('bloqueo');
+  bloqueo.style.display = 'flex';
+}
 </script>
 {% endblock %}
