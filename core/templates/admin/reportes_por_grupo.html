@@ -84,7 +84,7 @@
 	    </div>
 	    {% if request.user.username != 'admin' %}
 	    <div class="block" id="bloqueo">
-			  Acceso restringido por antigüedad de fecha y no podras editar
+			  Acceso restringido para esta fecha y no podras editar
 			</div>
 			{% endif %}
 	</div>
@@ -364,10 +364,15 @@ const fechaAValidar = new Date(id_year.value + '-' + id_month.value);
 
 // Obtener fecha actual y restar 2 meses
 const hoy = new Date();
-const limite = new Date(hoy.getFullYear(), hoy.getMonth() - 1);
+const limite_menor = new Date(hoy.getFullYear(), hoy.getMonth() - 1);
+const limite_mayor = new Date(hoy.getFullYear(), hoy.getMonth() + 0);
 
 // Comparar fechas
-if (fechaAValidar < limite) {
+if (fechaAValidar < limite_menor) {
+  const bloqueo = document.getElementById('bloqueo');
+  bloqueo.style.display = 'flex';
+}
+if (fechaAValidar >= limite_mayor) {
   const bloqueo = document.getElementById('bloqueo');
   bloqueo.style.display = 'flex';
 }
