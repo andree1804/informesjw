@@ -392,7 +392,13 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         return custom_urls + urls
     
     def generate_pdf_report(self, stats):
-        locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+        #locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+        MESES_ES = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ]
+        month_es = MESES_ES[int(stats['month']) - 1]
+
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="informe_{stats["month"]}_{stats["year"]}.pdf"'
         
@@ -400,7 +406,7 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         p = canvas.Canvas(buffer)
         
         # Configuración inicial
-        p.setTitle(f"Informe Consolidado - {stats['month']} {stats['year']}")
+        p.setTitle(f"Informe Consolidado - {month_es} {stats['year']}")
         
         # Encabezado
         p.setFont("Helvetica-Bold", 16)
@@ -409,7 +415,7 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         p.drawString(100, 750, "PREDICACIÓN Y ASISTENCIA A LAS REUNIONES")
         
         # Fecha y actualización
-        p.drawString(100, 730, f"{calendar.month_name[int(stats['month'])].capitalize()} de {stats['year']}")
+        p.drawString(100, 730, f"{month_es.capitalize()} de {stats['year']}")
         p.drawString(100, 715, f"Actualizado por: {stats['updated_by']}")
         p.drawString(100, 700, f"Actualizado el: {stats['updated_date']}")
         
