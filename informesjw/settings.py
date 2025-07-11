@@ -87,7 +87,7 @@ WSGI_APPLICATION = 'informesjw.wsgi.application'
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }'''
-'''DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME'),
@@ -96,14 +96,14 @@ WSGI_APPLICATION = 'informesjw.wsgi.application'
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
     }
-}'''
-DATABASES = {
+}
+'''DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
         ssl_require=True
     )
-}
+}'''
 
 CSRF_TRUSTED_ORIGINS = [
     'https://informesjw-master.up.railway.app',

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
-from .models import Report, Person, Group, Privilege
+from .models import Report, Person, Group, Privilege, PrivilegePermanent
 from .forms import GroupSelectForm
 
 from .models import PersonVirtual
@@ -26,6 +26,14 @@ from django.views.decorators.csrf import csrf_exempt
 import base64
 import calendar
 import locale
+
+from django.shortcuts import get_object_or_404
+from pdfrw import PdfReader, PdfWriter, PdfDict, PdfObject, PdfName
+import os
+import tempfile
+import zipfile
+
+from django.conf import settings
 #import requests
 
 
@@ -33,24 +41,17 @@ class ReportAdmin(admin.ModelAdmin):
     change_list_template = "admin/reportes_por_grupo.html"
 
     def changelist_view(self, request, extra_context=None):
-        #form = GroupSelectForm(request.GET or None)
         now = datetime.now()
         if now.month == 1:  # Si es enero
             previous_year = now.year - 1
         else:
             previous_year = now.year
-        '''meses = [
-            "enero", "febrero", "marzo", "abril", "mayo", "junio",
-            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-        ]'''
 
         previous_month = now.month - 1
         persons = []
         group_id = request.GET.get('group')
         selected_month = request.GET.get('month', previous_month)
         selected_year = request.GET.get('year', previous_year)
-        #current_month = request.GET.get('month_', str(now.month))
-        #current_year = request.GET.get('year_', str(now.year))
 
         form = GroupSelectForm({
             'month': selected_month,
@@ -109,6 +110,7 @@ class ReportAdmin(admin.ModelAdmin):
                     courses = int(courses_str) if courses_str.strip().isdigit() else 0
                     hours = int(hours_str) if hours_str.strip().isdigit() else 0
                     participated = f'participated_{i}' in request.POST
+                    note = request.POST.get(f'note_{i}', '')
 
                     report, created = Report.objects.get_or_create(
                         person=person,
@@ -119,7 +121,8 @@ class ReportAdmin(admin.ModelAdmin):
                             'privilege': privilege,
                             'courses': courses,
                             'hours': hours,
-                            'participated': participated
+                            'participated': participated,
+                            'note': note
                         }
                     )
 
@@ -129,6 +132,7 @@ class ReportAdmin(admin.ModelAdmin):
                         report.courses = courses
                         report.hours = hours
                         report.participated = participated
+                        report.note = note
                         report.save()
                 except Exception as e:
                     messages.error(request, f"Error al guardar para ID {person_id}: {str(e)}")
@@ -169,8 +173,160 @@ class ReportAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(ConsolidatedAdmin(Report, self.admin_site).changelist_view),
                 name='report_consolidated'
             ),
+            path(
+                'generar-pdf/',
+                self.admin_site.admin_view(self.generar_pdf),
+                name='report_generar_pdf',
+            ),
         ]
         return custom_urls + urls
+
+    def fill_pdf(self, person, reports, template_path, output_path):
+        template = PdfReader(template_path)
+
+        # Activar renderizado visual de campos
+        if template.Root.AcroForm:
+            template.Root.AcroForm.update(PdfDict(NeedAppearances=PdfObject('true')))
+
+        for page in template.pages:
+            annotations = page['/Annots']
+            if not annotations:
+                continue
+
+            for annotation in annotations:
+                field_raw = annotation.get('/T')
+                if not field_raw:
+                    continue
+
+                # Decodificar UTF-16 (quitar þÿ)
+                field = field_raw.to_unicode().replace('þÿ', '').strip()
+                
+                # Campos individuales
+                if field == '900_1_Text_SanSerif':
+                    annotation.update(PdfDict(V=person.names))
+                if field == '900_2_Text_SanSerif' and person.birth:
+                    annotation.update(PdfDict(V=str(person.birth)))
+                if field == '900_3_CheckBox' and person.gender == True:
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
+                if field == '900_4_CheckBox' and person.gender == False:
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
+                if field == '900_5_Text_SanSerif' and person.baptism:
+                    annotation.update(PdfDict(V=str(person.baptism)))
+                if field == '900_6_CheckBox' and person.hope == False:
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
+                if field == '900_7_CheckBox' and person.hope == True:
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
+
+                for priv in person.privileges_permanent.all():
+                    if field == '900_8_CheckBox' and priv.name == 'Anciano':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    if field == '900_9_CheckBox' and priv.name == 'Siervo Ministerial':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    if field == '900_10_CheckBox' and priv.name == 'Precursor Regular':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    if field == '900_11_CheckBox' and priv.name == 'Precursor Especial':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    if field == '900_12_CheckBox' and priv.name == 'Misionero':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                if field == '900_13_Text_C_SanSerif':
+                    annotation.update(PdfDict(V=f"{(reports[0].year)-1}-{int(reports[0].year)}"))
+
+                # Meses dinámicos
+                for report in reports:
+                    #m = int(report.month)
+                    total_hours = sum(int(r.hours or 0) for r in reports)
+                    if int(report.month) == 9:
+                        m = 1
+                    elif int(report.month) == 10:
+                        m = 2
+                    elif int(report.month) == 11:
+                        m = 3
+                    elif int(report.month) == 12:
+                        m = 4
+                    elif int(report.month) == 8:
+                        m = 12
+                    elif int(report.month) == 7:
+                        m = 11
+                    elif int(report.month) == 6:
+                        m = 10
+                    elif int(report.month) == 5:
+                        m = 9
+                    elif int(report.month) == 4:
+                        m = 8
+                    elif int(report.month) == 3:
+                        m = 7
+                    elif int(report.month) == 2:
+                        m = 6
+                    elif int(report.month) == 1:
+                        m = 5
+
+                    if field == f'901_{20 + m - 1}_CheckBox' and report.participated:
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    elif field == f'902_{20 + m - 1}_Text_C_SanSerif' and report.courses > 0:
+                        annotation.update(PdfDict(V=str(report.courses)))
+                    elif field == f'903_{20 + m - 1}_CheckBox' and report.privilege.name == 'Auxiliar':
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    elif field == f'904_{20 + m - 1}_S21_Value' and report.hours > 0:
+                        annotation.update(PdfDict(V=str(report.hours)))
+                    elif field == f'905_{20 + m - 1}_Text_SanSerif' and report.note:
+                        annotation.update(PdfDict(V=str(report.note)))
+
+                if field == '904_32_S21_Value' and total_hours > 0:
+                    annotation.update(PdfDict(V=str(total_hours)))  # o el valor dinámico que desees
+
+        PdfWriter().write(output_path, template)
+
+    def generar_pdf(self, request):
+        person_id = request.GET.get('person')
+        group_id = request.GET.get('group')
+        month = request.GET.get('month')
+        year = request.GET.get('year')
+
+        template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base.pdf')  # <-- actualiza la ruta
+
+        if person_id:
+            person = get_object_or_404(Person, pk=person_id)
+            reports = Report.objects.filter(person=person, year=year).order_by('month')
+
+            output_path = os.path.join(tempfile.gettempdir(), f"tarjeta_{person.id}.pdf")
+            self.fill_pdf(person, list(reports), template_path, output_path)
+
+            with open(output_path, 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename=tarjeta_{person.names}.pdf'
+                return response
+
+        elif group_id:
+            group = get_object_or_404(Group, pk=group_id)
+            persons = Person.objects.filter(group=group).order_by('names')
+
+            temp_dir = tempfile.mkdtemp()
+            zip_filename = os.path.join(temp_dir, f"tarjetas_grupo_{group.id}.zip")
+
+
+            year = int(year)
+            if int(month) >= 9:
+                years = [year, year + 1]
+            else:
+                years = [year - 1, year]
+
+            print(years)
+
+            with zipfile.ZipFile(zip_filename, 'w') as zipf:
+                for person in persons:
+                    reports = Report.objects.filter(person=person, year__in=years).order_by('month')
+                    if reports.exists():
+                        pdf_path = os.path.join(temp_dir, f"{person.names}.pdf")
+                        self.fill_pdf(person, list(reports), template_path, pdf_path)
+                        zipf.write(pdf_path, arcname=f"{person.names}.pdf")
+
+            with open(zip_filename, 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/zip')
+                response['Content-Disposition'] = f'attachment; filename=tarjetas_{group.name}.zip'
+                return response
+
+        else:
+            return HttpResponse("Debes enviar al menos 'person' o 'group' en la URL.", status=400)
 
 
 @admin.register(PersonVirtual)
@@ -250,61 +406,6 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
             obj.virtual = 0
         super().save_model(request, obj, form, change)
 
-    '''def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('add-image/', self.admin_site.admin_view(self.add_image), name='personvirtual_add'),
-        ]
-        return custom_urls + urls
-    
-    @csrf_exempt
-    def add_image(self, request):
-        if request.method == 'POST' and request.FILES.get('image'):
-            try:
-                # 1. Configuración Roboflow
-                api_key = "9pl2Yoxz8KxtvOIJ7SY4"
-                workspace = "andree1804"
-                model_name = "yolov8-person-detection"
-                version = "7"
-
-                # 1. Construir URL
-                url = f"https://detect.roboflow.com/{model_name}/{version}?api_key={api_key}"
-
-                # 2. Leer la imagen desde request.FILES
-                image_file = request.FILES['image']
-
-                # 3. Enviar POST con el archivo como multipart/form-data
-                response = requests.post(
-                    url,
-                    files={"file": image_file},
-                    data={"confidence": "0.5", "overlap": "0.3"},
-                    timeout=10
-                )
-                
-                # 4. Procesar respuesta
-                if response.status_code == 200:
-                    predictions = response.json().get('predictions', [])
-                    return JsonResponse({
-                        'success': True,
-                        'count': len(predictions)
-                    })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'error': f"Error {response.status_code}: {response.text}"
-                    })
-                    
-            except Exception as e:
-                return JsonResponse({
-                    'success': False,
-                    'error': str(e)
-                })
-        
-        return JsonResponse({
-            'success': False,
-            'error': 'No se recibió imagen válida'
-        })'''
-
 
 class ConsolidatedAdmin(admin.ModelAdmin):
     list_display = ('person', 'group', 'privilege', 'month', 'year')
@@ -317,14 +418,6 @@ class ConsolidatedAdmin(admin.ModelAdmin):
         if 'generate_report' in request.GET:
             month = request.GET.get('month')
             year = request.GET.get('year')
-
-            '''month_list = {
-                'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-                'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-                'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-            }
-
-            month_int = month_list[month.lower()]'''
             
             # Obtener datos consolidados
             reports = Report.objects.filter(month=month, year=year)
@@ -470,4 +563,5 @@ class ConsolidatedAdmin(admin.ModelAdmin):
 admin.site.register(Report, ReportAdmin)
 admin.site.register(Group)
 admin.site.register(Privilege)
+admin.site.register(PrivilegePermanent)
 admin.site.register(Person)

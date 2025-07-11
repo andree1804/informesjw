@@ -57,8 +57,15 @@
 						       value="{% if person.existing_report.hours != 0 %}{{ person.existing_report.hours }}{% endif %}" 
 						       min="0"></td>
 		          <td><input type="number" name="courses_{{ forloop.counter0 }}" 
-		          		 value="{% if person.existing_report.courses != 0 %}{{ person.existing_report.courses }}{% endif %}" min="0"></td>
-		          <td><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}></td>
+		          		 value="{% if person.existing_report.courses != 0 %}{{ person.existing_report.courses }}{% endif %}" min="0">
+		          </td>
+		          <td style="position: relative;"><input type="checkbox" name="participated_{{ forloop.counter0 }}" {% if person.existing_report and person.existing_report.participated %}checked{% endif %}>
+		          <a href="#" class="addlink addnote" aria-describedby="core-personvirtual">Agregar nota</a>
+		          <div>
+		          <input type="text" name="note_{{ forloop.counter0 }}" 
+		          		 value="{% if person.existing_report.note and person.existing_report.note != 'None' %}{{ person.existing_report.note }}{% else %}{% endif %}" min="0"
+		          		 class="hide_note hide_note_tooltip" placeholder="Agregar nota"></div>
+		          </td>
 		        </tr>
 		        {% endfor %}
 		      </tbody>
@@ -78,6 +85,9 @@
 						   class="button default" style="background: green;">
 						  Descargar PDF
 						</a>
+
+						<a href="{% url 'admin:report_generar_pdf' %}?group={{ group }}&year={{ year }}&month={{ month }}"
+   class="button default" style="background: green;">Descargar tarjetas del grupo</a>
 					{% endif %}
 				{% endif %}
 			{% endif %}
@@ -200,6 +210,40 @@ input[type="checkbox"]:disabled:checked::before {
       font-size: 20px;
     	text-align: center;
     }
+
+
+.addnote {
+        display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: center;
+    height: 45px;
+    width: 25px;
+    font-size: 9px !important;
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+    background-position: center top;
+    line-height: 9px;
+    float: right;
+    padding-left: 9px!important;
+}
+
+.hide_note_tooltip {
+    display: none;
+    position: absolute;
+    top: 5%; /* debajo del botón */
+    left: -94%;
+    transform: translateX(-50%);
+    background: #fff;
+    border: 2px solid #ccc!important;
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px 8px rgb(229 219 219 / 15%);
+    z-index: 100;
+    width: 180px;
+}
   </style>
 
 <script type="text/javascript">
@@ -354,6 +398,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+
+
+
+    const toggles = document.querySelectorAll('.addnote');
+
+    toggles.forEach((toggle, i) => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const input = this.parentElement.querySelector('.hide_note_tooltip');
+            if (input.style.display === 'block') {
+                input.style.display = 'none';
+            } else {
+                // Ocultar otros tooltips si están abiertos
+                document.querySelectorAll('.hide_note_tooltip').forEach(el => el.style.display = 'none');
+                input.style.display = 'block';
+                input.focus();
+            }
+        });
+    });
+
+    // Opcional: Ocultar si haces clic fuera
+    document.addEventListener('click', function(e) {
+        const clickedInside = e.target.closest('.hide_note_tooltip') || e.target.classList.contains('addnote');
+
+		    if (!clickedInside) {
+		        document.querySelectorAll('.hide_note_tooltip').forEach(el => {
+		            el.style.display = 'none';
+		        });
+		    }
+    });
 });
 
 const id_month = document.getElementById('id_month');

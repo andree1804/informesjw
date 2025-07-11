@@ -14,11 +14,31 @@ class Privilege(models.Model):
     def __str__(self):
         return self.name
 
+class PrivilegePermanent(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
 
 class Person(models.Model):
+    GENDER_CHOICES = [
+        (True, 'Hombre'),
+        (False, 'Mujer'),
+    ]
+
+    HOPE_CHOICES = [
+        (True, 'Ungido'),
+        (False, 'Muchedumbre'),
+    ]
     names = models.CharField(max_length=100)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     privilege = models.ForeignKey(Privilege, on_delete=models.CASCADE)
+    privileges_permanent = models.ManyToManyField(PrivilegePermanent, null=True, blank=True)
+    birth = models.DateField("Fecha de nacimiento", null=True, blank=True)
+    baptism = models.DateField("Fecha de bautismo", null=True, blank=True)
+    gender = models.BooleanField(choices=GENDER_CHOICES, default=False)
+    hope = models.BooleanField(choices=HOPE_CHOICES, default=False)
 
     def __str__(self):
         return f"{self.names}"
@@ -39,6 +59,8 @@ class Report(models.Model):
     participated = models.BooleanField(default=False)
     month = models.CharField(max_length=20, choices=MONTH_CHOICES)
     year = models.IntegerField()
+    note = models.CharField(max_length=250, null=True, blank=True)
+
 
     class Meta:
         verbose_name = "Informe de servicio"
