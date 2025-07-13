@@ -49,6 +49,7 @@ class ReportAdmin(admin.ModelAdmin):
 
         previous_month = now.month - 1
         persons = []
+        group = []
         group_id = request.GET.get('group')
         selected_month = request.GET.get('month', previous_month)
         selected_year = request.GET.get('year', previous_year)
@@ -60,12 +61,13 @@ class ReportAdmin(admin.ModelAdmin):
         })
 
         if request.user.username != 'admin':
-            groups = Group.objects.filter(name=request.user.username.capitalize()).first()
+            group_default = Group.objects.filter(name=request.user.username.capitalize()).first()
+            groups = Group.objects.all()
         else:
             groups = Group.objects.all()
         if group_id and selected_month and selected_year:
             if request.user.username != 'admin':
-                persons = list(Person.objects.filter(group_id=groups.id).order_by('names'))
+                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
             else:
                 persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
             
@@ -141,10 +143,22 @@ class ReportAdmin(admin.ModelAdmin):
             return redirect(f"{request.path}?group={group_id}&month={selected_month}&year={selected_year}")
 
         if request.user.username != 'admin':
-            form.fields['group'].initial = groups.id if groups else None
-            form.fields['group'].choices = [
-                (groups.id, groups.name) if groups else ('', '---')
-            ]
+            group_default = Group.objects.filter(name=request.user.username.capitalize()).first()
+            groups = Group.objects.all()
+
+            form.fields['group'].choices = [(group.id, group.name) for group in groups]
+            
+            if group_default:
+                form.fields['group'].initial = group_default.id
+        else:
+            groups = Group.objects.all()
+            form.fields['group'].choices = [(group.id, group.name) for group in groups]
+
+        if persons:
+            group_name = persons[0].group.name
+        else:
+            group_name = ''
+
         context = {
             **self.admin_site.each_context(request),
             'form': form,
@@ -154,6 +168,7 @@ class ReportAdmin(admin.ModelAdmin):
             'año_actual': selected_year,
             'privilegios': Privilege.objects.all().order_by('id'),
             'group': group_id,
+            'group_name': group_name,
             'month': selected_month,
             'year': selected_year,
             'opts': self.model._meta,  # Necesario para el admin
@@ -200,18 +215,23 @@ class ReportAdmin(admin.ModelAdmin):
 
                 # Decodificar UTF-16 (quitar þÿ)
                 field = field_raw.to_unicode().replace('þÿ', '').strip()
+
+                if person.birth:
+                    birth = person.birth.strftime('%d/%m/%Y')
                 
+                if person.baptism:
+                    baptism = person.baptism.strftime('%d/%m/%Y')
                 # Campos individuales
                 if field == '900_1_Text_SanSerif':
                     annotation.update(PdfDict(V=person.names))
                 if field == '900_2_Text_SanSerif' and person.birth:
-                    annotation.update(PdfDict(V=str(person.birth)))
+                    annotation.update(PdfDict(V=str(birth)))
                 if field == '900_3_CheckBox' and person.gender == True:
                     annotation.update(PdfDict(AS=PdfName('Yes')))
                 if field == '900_4_CheckBox' and person.gender == False:
                     annotation.update(PdfDict(AS=PdfName('Yes')))
                 if field == '900_5_Text_SanSerif' and person.baptism:
-                    annotation.update(PdfDict(V=str(person.baptism)))
+                    annotation.update(PdfDict(V=str(baptism)))
                 if field == '900_6_CheckBox' and person.hope == False:
                     annotation.update(PdfDict(AS=PdfName('Yes')))
                 if field == '900_7_CheckBox' and person.hope == True:
