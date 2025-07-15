@@ -37,6 +37,16 @@ from django.conf import settings
 #import requests
 
 
+class PersonAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'names',
+        'group',
+        'privilege',
+        'baptism',
+    )
+
+
 class ReportAdmin(admin.ModelAdmin):
     change_list_template = "admin/reportes_por_grupo.html"
 
@@ -584,4 +594,4 @@ admin.site.register(Report, ReportAdmin)
 admin.site.register(Group)
 admin.site.register(Privilege)
 admin.site.register(PrivilegePermanent)
-admin.site.register(Person)
+admin.site.register(Person, PersonAdmin)
