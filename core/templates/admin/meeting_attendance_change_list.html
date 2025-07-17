@@ -34,7 +34,7 @@
 		    {% for mes, data in meses.items %}
 		      {% for reg in data.registros %}
 		        <tr>
-		          <td>{{ reg.meeting_date }}</td>
+		          <td>{{ reg.meeting_date|date:"l j \d\e F \d\e Y" }}</td>
 		          <td>{{ reg.in_person }}</td>
 		          <td>{{ reg.virtual }}</td>
 		          <td>{{ reg.in_person|add:reg.virtual }}</td>
