@@ -20,6 +20,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.timezone import localtime
 from django.utils.safestring import mark_safe
+from collections import defaultdict
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -32,6 +33,7 @@ from pdfrw import PdfReader, PdfWriter, PdfDict, PdfObject, PdfName
 import os
 import tempfile
 import zipfile
+
 
 from django.conf import settings
 #import requests
@@ -203,6 +205,11 @@ class ReportAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.generar_pdf),
                 name='report_generar_pdf',
             ),
+            path(
+                'generar-pdf-publicadores/',
+                self.admin_site.admin_view(self.generar_pdf_publicadores),
+                name='report_generar_pdf_publicadores',
+            ),
         ]
         return custom_urls + urls
 
@@ -346,9 +353,13 @@ class ReportAdmin(admin.ModelAdmin):
                 for person in persons:
                     reports = Report.objects.filter(person=person, year__in=years).order_by('month')
                     if reports.exists():
-                        pdf_path = os.path.join(temp_dir, f"{person.names}.pdf")
+                        if person.privilege.name == 'Publicador':
+                            priv_name = ''
+                        else:
+                            priv_name = f"-{person.privilege.name}"
+                        pdf_path = os.path.join(temp_dir, f"{person.names}{priv_name}.pdf")
                         self.fill_pdf(person, list(reports), template_path, pdf_path)
-                        zipf.write(pdf_path, arcname=f"{person.names}.pdf")
+                        zipf.write(pdf_path, arcname=f"{person.names}{priv_name}.pdf")
 
             with open(zip_filename, 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/zip')
@@ -357,6 +368,122 @@ class ReportAdmin(admin.ModelAdmin):
 
         else:
             return HttpResponse("Debes enviar al menos 'person' o 'group' en la URL.", status=400)
+
+    def generar_pdf_publicadores(self, request):
+        month = request.GET.get('month')
+        year = request.GET.get('year')
+        privilege = request.GET.get('privilege')
+
+
+        if not month or not year:
+            return HttpResponse("Debes enviar al menos 'month' y 'year' en la URL.", status=400)
+
+        if privilege == 'Publicador':
+            template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base_publicadores.pdf')
+            name_pdf = '1-Publicadores'
+        elif privilege == 'Auxiliar':
+            template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base_auxiliares.pdf')
+            name_pdf = '2-Auxiliares'
+        elif privilege == 'PR':
+            template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base_regulares.pdf')
+            name_pdf = '3-Regulares'
+        
+        temp_dir = tempfile.mkdtemp()
+        output_path = os.path.join(temp_dir, "tarjeta_publicadores.pdf")
+
+        year = int(year)
+        month = int(month)
+
+        if month >= 9:
+            years = [year, year + 1]
+            year_name = f'{year}-{year + 1}'
+        else:
+            years = [year - 1, year]
+            year_name = f'{year - 1}-{year}'
+
+        reports = Report.objects.filter(year__in=years, privilege__name=privilege).order_by('month')
+        if not reports.exists():
+            return HttpResponse("No se encontraron reportes para esos meses.")
+
+        self.fill_pdf_publicadores(list(reports), template_path, output_path, privilege)
+
+        with open(output_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{name_pdf}_{year_name}.pdf"'
+            return response
+
+    def fill_pdf_publicadores(self, reports, template_path, output_path, privilege):
+        template = PdfReader(template_path)
+
+        if template.Root.AcroForm:
+            template.Root.AcroForm.update(PdfDict(NeedAppearances=PdfObject('true')))
+
+        # Agrupar por mes y acumular valores
+        acumulado_por_mes = defaultdict(lambda: {
+            'participated': 0,
+            'courses': 0,
+            'auxiliares': 0,
+            'hours': 0,
+            'notes': 0
+        })
+
+        for r in reports:
+            acumulado = acumulado_por_mes[int(r.month)]
+            acumulado['participated'] += 1 if r.participated else 0
+            acumulado['courses'] += r.courses or 0
+            acumulado['hours'] += r.hours or 0
+            acumulado['auxiliares'] += 1 if r.privilege and r.privilege.name == 'Auxiliar' else 0
+            acumulado['notes'] += r.participated or 0
+
+        # Total general de horas
+        total_hours = sum(d['hours'] for d in acumulado_por_mes.values())
+
+        # Mapear mes calendario a columna PDF (1 → 5, ..., 9 → 1)
+        def mes_a_columna_pdf(mes, privilege):
+            return {9: 1, 10: 2, 11: 3, 12: 4, 1: 5, 2: 6, 3: 7, 4: 8, 5: 9, 6: 10, 7: 11, 8: 12}.get(mes)
+
+        for page in template.pages:
+            annotations = page['/Annots']
+            if not annotations:
+                continue
+
+            for annotation in annotations:
+                field_raw = annotation.get('/T')
+                if not field_raw:
+                    continue
+
+                field = field_raw.to_unicode().replace('þÿ', '').strip()
+
+                if field == '900_10_CheckBox' and privilege == 'PR':
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
+
+                if field == '900_13_Text_C_SanSerif':
+                    # Año de servicio (ej. 2024-2025)
+                    example_year = reports[0].year
+                    annotation.update(PdfDict(V=f"{example_year-1}-{example_year}"))
+
+                # Revisar todos los meses acumulados
+                for mes, datos in acumulado_por_mes.items():
+                    columna = mes_a_columna_pdf(mes, privilege)
+                    if not columna:
+                        continue
+
+                    if field == f'901_{20 + columna - 1}_CheckBox' and datos['participated'] > 0:
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    elif field == f'902_{20 + columna - 1}_Text_C_SanSerif' and datos['courses'] > 0:
+                        annotation.update(PdfDict(V=str(datos['courses'])))
+                    elif field == f'903_{20 + columna - 1}_CheckBox' and datos['auxiliares'] > 0:
+                        annotation.update(PdfDict(AS=PdfName('Yes')))
+                    elif field == f'904_{20 + columna - 1}_S21_Value' and datos['hours'] > 0:
+                        annotation.update(PdfDict(V=str(datos['hours'])))
+                    elif field == f'905_{20 + columna - 1}_Text_SanSerif' and datos['notes']:
+                        annotation.update(PdfDict(V=str(datos['notes'])))
+                        #annotation.update(PdfDict(V=" | ".join(datos['notes'])))
+
+                if field == '904_32_S21_Value':
+                    annotation.update(PdfDict(V=str(total_hours)))
+
+        PdfWriter().write(output_path, template)
 
 
 @admin.register(PersonVirtual)

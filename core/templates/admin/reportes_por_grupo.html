@@ -91,12 +91,21 @@
 				    </a>-->
 				    {% if request.user.username == "admin" and month and year %}
 						<a href="{% url 'admin:report_consolidated' %}?month={{ month }}&year={{ year }}&generate_report=1&format=pdf"
-						   class="button default" style="background: green;">
-						  Descargar PDF
+						  class="button default" style="background: green;">
+						  Descargar consolidado PDF
 						</a>
 
 						<a href="{% url 'admin:report_generar_pdf' %}?group={{ group }}&year={{ year }}&month={{ month }}"
-   class="button default" style="background: green;">Descargar tarjetas del grupo</a>
+   						class="button default" style="background: green;">Descargar tarjetas del grupo</a>
+
+   					<a href="{% url 'admin:report_generar_pdf_publicadores' %}?privilege=Publicador&year={{ year }}&month={{ month }}"
+   						class="button default" style="background: green;">Descargar tarjeta publicadores</a>
+
+   					<a href="{% url 'admin:report_generar_pdf_publicadores' %}?privilege=Auxiliar&year={{ year }}&month={{ month }}"
+   						class="button default" style="background: green;">Descargar tarjeta auxiliares</a>
+
+   					<a href="{% url 'admin:report_generar_pdf_publicadores' %}?privilege=PR&year={{ year }}&month={{ month }}"
+   						class="button default" style="background: green;">Descargar tarjeta PR</a>
 					{% endif %}
 				{% endif %}
 			{% endif %}
