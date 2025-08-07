@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.contrib.postgres.fields import JSONField
 
 class Group(models.Model):
     name = models.CharField(max_length=100)
@@ -9,13 +10,13 @@ class Group(models.Model):
 
 
 class Privilege(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100,help_text='Publicador,Auxiliar,PR')
 
     def __str__(self):
         return self.name
 
 class PrivilegePermanent(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100,help_text='Misionero,Precursor Especial,Precursor Regular,Siervo Ministerial,Anciano')
 
     def __str__(self):
         return self.name
@@ -39,6 +40,9 @@ class Person(models.Model):
     baptism = models.DateField("Fecha de bautismo", null=True, blank=True)
     gender = models.BooleanField(choices=GENDER_CHOICES, default=False)
     hope = models.BooleanField(choices=HOPE_CHOICES, default=False)
+    phone = models.CharField("Teléfono", max_length=20, null=True, blank=True)
+    address = models.CharField("Dirección", max_length=255, null=True, blank=True)
+    contacts = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.names}"

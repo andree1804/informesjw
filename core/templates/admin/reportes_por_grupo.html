@@ -123,7 +123,26 @@
 </div>
 
 
-  <style type="text/css">
+<style type="text/css">
+
+.table-report {
+  max-height: 400px; /* Altura máxima del contenedor */
+  overflow-y: auto;  /* Habilitar scroll vertical */
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  position: -webkit-sticky; /* Para Safari */
+  position: sticky;
+  top: 0;
+  z-index: 10; /* Asegura que esté por encima del contenido */
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Sombra para efecto visual */
+}
+
 
   @media (max-width: 767px) {
     #header, #content {

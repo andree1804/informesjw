@@ -38,15 +38,44 @@ import zipfile
 from django.conf import settings
 #import requests
 
+from .forms import PersonForm
+
 
 class PersonAdmin(admin.ModelAdmin):
-    list_display = (
-        'id',
-        'names',
-        'group',
-        'privilege',
-        'baptism',
-    )
+    form = PersonForm
+    list_display = ('id', 'names', 'group', 'privilege', 'baptism')
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = [
+            (None, {
+                'fields': [
+                    'names',
+                    'group',
+                    'privilege',
+                    'privileges_permanent',
+                    'birth',
+                    'baptism',
+                    'gender',
+                    'hope',
+                    'phone',
+                    'address',
+                ]
+            })
+        ]
+        
+        # Add contacts section
+        contact_fields = [
+            ('contact_name_0', 'contact_phone_0'),
+            ('contact_name_1', 'contact_phone_1'),
+            ('contact_name_2', 'contact_phone_2'),
+        ]
+        
+        fieldsets.append(('Contactos de emergencia', {
+            'fields': contact_fields,
+            'classes': ('collapse',)  # Optional: makes this section collapsible
+        }))
+        
+        return fieldsets
 
 
 class ReportAdmin(admin.ModelAdmin):
@@ -722,3 +751,6 @@ admin.site.register(Group)
 admin.site.register(Privilege)
 admin.site.register(PrivilegePermanent)
 admin.site.register(Person, PersonAdmin)
+
+
+
