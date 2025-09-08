@@ -40,10 +40,121 @@ from django.conf import settings
 
 from .forms import PersonForm
 
+import openpyxl
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
+
+from django.db import connection
+
+
+def export_to_xls(modeladmin, request, queryset):
+    # Crear un libro de trabajo y una hoja
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Personas"
+    
+    # Definir campos de contactos (hasta 3 contactos)
+    contact_fields = [
+        ('contact_apoderado_1', 'contact_telefono_1'),
+        ('contact_apoderado_2', 'contact_telefono_2'),
+        ('contact_apoderado_3', 'contact_telefono_3'),
+    ]
+    
+    # Crear encabezados incluyendo los campos de contactos
+    headers = [
+        'ID', 'Nombres', 'Grupo', 'Privilegio', 
+        'Privilegios Permanentes', 'Fecha Nacimiento', 
+        'Fecha Bautismo', 'Género', 'Esperanza', 
+        'Teléfono', 'Dirección'
+    ]
+    
+    # Agregar encabezados de contactos
+    for apoderado_field, telefono_field in contact_fields:
+        headers.extend([f'Apoderado {apoderado_field[-1]}', f'Teléfono {telefono_field[-1]}'])
+    
+    # Aplicar formato a los encabezados
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Llenar datos con el queryset seleccionado
+    for row_num, person in enumerate(queryset, 2):
+        # Obtener privilegios permanentes como string
+        privileges_permanent = ", ".join([str(pp) for pp in person.privileges_permanent.all()])
+        
+        # Convertir campos booleanos a texto legible
+        gender = 'Hombre' if person.gender else 'Mujer'
+        hope = 'Ungido' if person.hope else 'Muchedumbre'
+        
+        # Datos básicos
+        data_row = [
+            person.id,
+            person.names,
+            str(person.group),
+            str(person.privilege),
+            privileges_permanent,
+            person.birth,
+            person.baptism,
+            gender,
+            hope,
+            person.phone,
+            person.address
+        ]
+        
+        # Llenar datos básicos
+        for col_num, value in enumerate(data_row, 1):
+            ws.cell(row=row_num, column=col_num, value=value)
+        
+        # Llenar datos de contactos
+        contact_col_start = len(data_row) + 1
+        
+        for contact_index, (apoderado_field, telefono_field) in enumerate(contact_fields):
+            if contact_index < len(person.contacts):
+                contact = person.contacts[contact_index]
+                # Apoderado del contacto
+                ws.cell(row=row_num, column=contact_col_start + (contact_index * 2), 
+                       value=contact.get('apoderado', ''))
+                # Teléfono del contacto
+                ws.cell(row=row_num, column=contact_col_start + (contact_index * 2) + 1, 
+                       value=contact.get('telefono', ''))
+            else:
+                # Campos vacíos si no hay contacto
+                ws.cell(row=row_num, column=contact_col_start + (contact_index * 2), value='')
+                ws.cell(row=row_num, column=contact_col_start + (contact_index * 2) + 1, value='')
+    
+    # Ajustar el ancho de las columnas
+    for column in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 30)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Crear respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="personas_export.xlsx"'
+    
+    # Guardar el libro de trabajo en la respuesta
+    wb.save(response)
+    
+    return response
+
+export_to_xls.short_description = "Exportar seleccionados a XLS"
+
 
 class PersonAdmin(admin.ModelAdmin):
     form = PersonForm
     list_display = ('id', 'names', 'group', 'privilege', 'baptism')
+
+    actions = [export_to_xls]
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = [
@@ -106,25 +217,34 @@ class ReportAdmin(admin.ModelAdmin):
             groups = Group.objects.all()
         else:
             groups = Group.objects.all()
-        if group_id and selected_month and selected_year:
-            if request.user.username != 'admin':
-                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
-            else:
-                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
-            
+        if group_id and selected_month and selected_year:    
             # Obtener los reportes ya existentes
             reports = Report.objects.filter(
-                person__in=persons,
+                group_id=group_id,
+                #person__in=persons,
                 month=selected_month,
                 year=selected_year
             ).select_related('privilege')
 
-            report_map = {r.person_id: r for r in reports}
+            if reports:
+                persons_list = []
+                for r in reports:
+                    person = Person.objects.filter(id=r.person_id)\
+                        .select_related('group', 'privilege')\
+                        .order_by('names').first()  # Usar first() ya que id es único
+                    if person:
+                        persons_list.append(person)
+                persons = persons_list  # Ahora tienes todas las personas
+            else:
+                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
 
+            report_map = {r.person_id: r for r in reports}
+            
             for person in persons:
                 person.existing_report = report_map.get(person.id)
                 if person.existing_report:
                     person.privilege = person.existing_report.privilege  # <--- esta línea es CLAVE
+
 
         if request.method == "POST":
             group_id = request.POST.get('group')
@@ -192,7 +312,7 @@ class ReportAdmin(admin.ModelAdmin):
             if group_default:
                 form.fields['group'].initial = group_default.id
         else:
-            groups = Group.objects.all()
+            groups = Group.objects.exclude(name='-')
             form.fields['group'].choices = [(group.id, group.name) for group in groups]
 
         if persons:
