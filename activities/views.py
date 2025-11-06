@@ -1,4 +1,4 @@
-from django.shortcuts import render
+'''from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 import requests
 from bs4 import BeautifulSoup
@@ -43,4 +43,4 @@ def guia_actividades_view(request):
     else:
         html_content = "<p>No se encontraron publicaciones.</p>"
 
-    return render(request, "admin/guia_actividades.html", {"content": html_content})
+    return render(request, "admin/guia_actividades.html", {"content": html_content})'''
