@@ -1,4 +1,4 @@
-from django.shortcuts import render
+'''from django.shortcuts import render
 
 from django.http import JsonResponse
 from datetime import datetime, timedelta
@@ -6,60 +6,23 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-from datetime import datetime, timedelta
-
-# Diccionario de meses en español
+# Diccionario meses en español
 MESES = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    "enero","febrero","marzo","abril","mayo","junio",
+    "julio","agosto","septiembre","octubre","noviembre","diciembre"
 ]
 
 def format_date_spanish(fecha):
     """
-    Convierte una fecha '2025-09-29' en el formato usado por jw.org:
-    - Si los meses son distintos: '29-de-septiembre-a-5-de-octubre-de-2025'
-    - Si los meses son iguales: '6-a-12-de-octubre-de-2025'
+    Convierte una fecha '2025-09-29' en '29-de-septiembre-a-5-de-octubre-de-2025'
     """
     fecha_inicio = datetime.strptime(fecha, "%Y-%m-%d")
     fecha_fin = fecha_inicio + timedelta(days=6)
 
-    mes_inicio = MESES[fecha_inicio.month - 1]
-    mes_fin = MESES[fecha_fin.month - 1]
-
-    if mes_inicio == mes_fin:
-        # Formato corto → 6-a-12-de-octubre-de-2025
-        return f"{fecha_inicio.day}-a-{fecha_fin.day}-de-{mes_fin}-de-{fecha_fin.year}"
-    else:
-        # Formato largo → 29-de-septiembre-a-5-de-octubre-de-2025
-        return (
-            f"{fecha_inicio.day}-de-{mes_inicio}-a-"
-            f"{fecha_fin.day}-de-{mes_fin}-de-{fecha_fin.year}"
-        )
-
-def build_url(fecha):
-    """
-    Construye la URL de la guía de actividades para la semana correspondiente a la fecha dada.
-    """
-    fecha_segmento = format_date_spanish(fecha)
-    fecha_inicio = datetime.strptime(fecha, "%Y-%m-%d")
-    mes_inicio = MESES[fecha_inicio.month - 1]
-    mes_fin = MESES[(fecha_inicio + timedelta(days=6)).month - 1]
-    year = fecha_inicio.year
-
-    # Determinar el segmento bimestral
-    if mes_inicio == mes_fin:
-        bimonth_segment = f"{mes_inicio}-{year}-mwb"
-    else:
-        bimonth_segment = f"{mes_inicio}-{mes_fin}-{year}-mwb"
-
-    # Construir la URL
-    base_url = "https://www.jw.org/es/biblioteca/guia-actividades-reunion-testigos-jehova"
-    return f"{base_url}/{bimonth_segment}/Vida-y-Ministerio-Cristianos-{fecha_segmento}/"
-
-# Ejemplo de uso
-fecha = "2025-10-06"
-url = build_url(fecha)
-print(url)
+    return (
+        f"{fecha_inicio.day}-de-{MESES[fecha_inicio.month-1]}-a-"
+        f"{fecha_fin.day}-de-{MESES[fecha_fin.month-1]}-de-{fecha_fin.year}"
+    )
 
 
 import re
@@ -210,4 +173,4 @@ def vida_ministerio(request, fecha):
         "secciones": parse_vmc_html(soup)
     }
 
-    return JsonResponse(data, json_dumps_params={"ensure_ascii": False, "indent": 2})
+    return JsonResponse(data, json_dumps_params={"ensure_ascii": False, "indent": 2})'''
