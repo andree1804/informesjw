@@ -33,6 +33,7 @@ from pdfrw import PdfReader, PdfWriter, PdfDict, PdfObject, PdfName
 import os
 import tempfile
 import zipfile
+from django.db.models import Q
 
 
 from django.conf import settings
@@ -362,7 +363,7 @@ class ReportAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    def fill_pdf(self, person, reports, template_path, output_path):
+    def fill_pdf(self, person, reports, template_path, output_path, year_service):
         template = PdfReader(template_path)
 
         # Activar renderizado visual de campos
@@ -415,7 +416,8 @@ class ReportAdmin(admin.ModelAdmin):
                     if field == '900_12_CheckBox' and priv.name == 'Misionero':
                         annotation.update(PdfDict(AS=PdfName('Yes')))
                 if field == '900_13_Text_C_SanSerif':
-                    annotation.update(PdfDict(V=f"{(reports[0].year)-1}-{int(reports[0].year)}"))
+                    annotation.update(PdfDict(V=year_service))
+                    #annotation.update(PdfDict(V=f"{(reports[0].year)-1}-{int(reports[0].year)}"))
 
                 # Meses dinámicos
                 for report in reports:
@@ -468,11 +470,28 @@ class ReportAdmin(admin.ModelAdmin):
         month = request.GET.get('month')
         year = request.GET.get('year')
 
+        # Determinar el año teocrático al que pertenece el mes seleccionado
+        year = int(year)
+        if int(month) >= 9:
+            start_year = year
+            end_year = int(year) + 1
+            year_service = f"{year}-{int(year + 1)}"
+        else:
+            start_year = int(year) - 1
+            end_year = year
+            year_service = f"{int(year - 1)}-{year}"
+
         template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base.pdf')  # <-- actualiza la ruta
 
         if person_id:
             person = get_object_or_404(Person, pk=person_id)
-            reports = Report.objects.filter(person=person, year=year).order_by('month')
+            # Filtrado de reportes en el año teocrático
+            reports = Report.objects.filter(
+                person=person
+            ).filter(
+                Q(year=start_year, month__in=['9', '10', '11', '12']) |  # Septiembre–Diciembre del año inicial
+                Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])  # Enero–Agosto del siguiente año
+            ).order_by('year', 'month')
 
             output_path = os.path.join(tempfile.gettempdir(), f"tarjeta_{person.id}.pdf")
             self.fill_pdf(person, list(reports), template_path, output_path)
@@ -489,25 +508,23 @@ class ReportAdmin(admin.ModelAdmin):
             temp_dir = tempfile.mkdtemp()
             zip_filename = os.path.join(temp_dir, f"tarjetas_grupo_{group.id}.zip")
 
-
-            year = int(year)
-            if int(month) >= 9:
-                years = [year, year + 1]
-            else:
-                years = [year - 1, year]
-
-            print(years)
-
             with zipfile.ZipFile(zip_filename, 'w') as zipf:
                 for person in persons:
-                    reports = Report.objects.filter(person=person, year__in=years).order_by('month')
+                    # Filtrado de reportes en el año teocrático
+                    reports = Report.objects.filter(
+                        person=person
+                    ).filter(
+                        Q(year=start_year, month__in=['9', '10', '11', '12']) |  # Septiembre–Diciembre del año inicial
+                        Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])  # Enero–Agosto del siguiente año
+                    ).order_by('year', 'month')
+
                     if reports.exists():
                         if person.privilege.name == 'Publicador':
                             priv_name = ''
                         else:
                             priv_name = f"-{person.privilege.name}"
                         pdf_path = os.path.join(temp_dir, f"{person.names}{priv_name}.pdf")
-                        self.fill_pdf(person, list(reports), template_path, pdf_path)
+                        self.fill_pdf(person, list(reports), template_path, pdf_path, year_service)
                         zipf.write(pdf_path, arcname=f"{person.names}{priv_name}.pdf")
 
             with open(zip_filename, 'rb') as f:
@@ -523,6 +540,16 @@ class ReportAdmin(admin.ModelAdmin):
         year = request.GET.get('year')
         privilege = request.GET.get('privilege')
 
+        # Determinar el año teocrático al que pertenece el mes seleccionado
+        year = int(year)
+        if int(month) >= 9:
+            start_year = year
+            end_year = int(year) + 1
+            year_service = f"{year}-{int(year + 1)}"
+        else:
+            start_year = int(year) - 1
+            end_year = year
+            year_service = f"{int(year - 1)}-{year}"
 
         if not month or not year:
             return HttpResponse("Debes enviar al menos 'month' y 'year' en la URL.", status=400)
@@ -540,28 +567,26 @@ class ReportAdmin(admin.ModelAdmin):
         temp_dir = tempfile.mkdtemp()
         output_path = os.path.join(temp_dir, "tarjeta_publicadores.pdf")
 
-        year = int(year)
-        month = int(month)
+        reports = Report.objects.filter(
+            privilege__name=privilege,
+            participated=True
+        ).filter(
+            Q(year=start_year, month__in=['9', '10', '11', '12']) |  # Septiembre–Diciembre del año inicial
+            Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])  # Enero–Agosto del siguiente año
+        ).order_by('year', 'month')
+        #reports = Report.objects.filter(year__in=years, privilege__name=privilege).order_by('month')
 
-        if month >= 9:
-            years = [year, year + 1]
-            year_name = f'{year}-{year + 1}'
-        else:
-            years = [year - 1, year]
-            year_name = f'{year - 1}-{year}'
-
-        reports = Report.objects.filter(year__in=years, privilege__name=privilege).order_by('month')
         if not reports.exists():
             return HttpResponse("No se encontraron reportes para esos meses.")
 
-        self.fill_pdf_publicadores(list(reports), template_path, output_path, privilege)
+        self.fill_pdf_publicadores(list(reports), template_path, output_path, privilege, year_service)
 
         with open(output_path, 'rb') as f:
             response = HttpResponse(f.read(), content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{name_pdf}_{year_name}.pdf"'
+            response['Content-Disposition'] = f'attachment; filename="{name_pdf}_{year_service}.pdf"'
             return response
 
-    def fill_pdf_publicadores(self, reports, template_path, output_path, privilege):
+    def fill_pdf_publicadores(self, reports, template_path, output_path, privilege, year_service):
         template = PdfReader(template_path)
 
         if template.Root.AcroForm:
@@ -607,9 +632,7 @@ class ReportAdmin(admin.ModelAdmin):
                     annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 if field == '900_13_Text_C_SanSerif':
-                    # Año de servicio (ej. 2024-2025)
-                    example_year = reports[0].year
-                    annotation.update(PdfDict(V=f"{example_year-1}-{example_year}"))
+                    annotation.update(PdfDict(V=year_service))
 
                 # Revisar todos los meses acumulados
                 for mes, datos in acumulado_por_mes.items():

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'django_json_widget',
+    'activities'
 ]
 
 MIDDLEWARE = [
