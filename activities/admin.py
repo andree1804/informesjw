@@ -1,4 +1,4 @@
-from django.contrib import admin
+'''from django.contrib import admin
 from django.urls import path
 from .views import guia_actividades_view
 
@@ -17,4 +17,4 @@ def custom_get_urls():
     return custom_urls + original_get_urls()
 
 # Reemplazar get_urls con la versión personalizada
-admin.site.get_urls = custom_get_urls
+admin.site.get_urls = custom_get_urls'''
