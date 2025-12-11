@@ -218,33 +218,32 @@ class ReportAdmin(admin.ModelAdmin):
             groups = Group.objects.all()
         else:
             groups = Group.objects.all()
-        if group_id and selected_month and selected_year:    
-            # Obtener los reportes ya existentes
+        if group_id and selected_month and selected_year:
+            # Obtener personas del grupo ordenadas
+            persons = list(
+                Person.objects.filter(group_id=group_id)
+                .select_related("group", "privilege")
+                .order_by("names")
+            )
+
+            # Obtener reportes existentes del mes/año
             reports = Report.objects.filter(
                 group_id=group_id,
-                #person__in=persons,
                 month=selected_month,
                 year=selected_year
-            ).select_related('privilege')
+            ).select_related("privilege", "person")
 
-            if reports:
-                persons_list = []
-                for r in reports:
-                    person = Person.objects.filter(id=r.person_id)\
-                        .select_related('group', 'privilege')\
-                        .order_by('names').first()  # Usar first() ya que id es único
-                    if person:
-                        persons_list.append(person)
-                persons = persons_list  # Ahora tienes todas las personas
-            else:
-                persons = list(Person.objects.filter(group_id=group_id).order_by('names'))
-
+            # Crear mapa rápido {person_id: Report}
             report_map = {r.person_id: r for r in reports}
-            
+
+            # Inyectar el reporte en cada persona (si existe)
             for person in persons:
-                person.existing_report = report_map.get(person.id)
-                if person.existing_report:
-                    person.privilege = person.existing_report.privilege  # <--- esta línea es CLAVE
+                report = report_map.get(person.id)
+                person.existing_report = report
+
+                # Si tiene reporte, usar privilegio del reporte
+                if report:
+                    person.privilege = report.privilege
 
 
         if request.method == "POST":
