@@ -30,23 +30,10 @@ class GroupSelectForm(forms.Form):
         required=True
     )
 
-    '''year = forms.ChoiceField(
+    year = forms.ChoiceField(
         choices=[(y, y) for y in range(datetime.datetime.now().year, datetime.datetime.now().year + 6)],
         label="Año",
-        required=True,
-        initial=datetime.datetime.now().year
-    )'''
-    year = forms.ChoiceField(
-        choices=[
-            (str(y), str(y))
-            for y in range(
-                datetime.datetime.now().year - 5,
-                datetime.datetime.now().year + 6
-            )
-        ],
-        label="Año",
-        required=True,
-        initial=str(datetime.datetime.now().year)
+        required=True
     )
 
     month_ = forms.ChoiceField(
@@ -56,16 +43,9 @@ class GroupSelectForm(forms.Form):
     )
 
     year_ = forms.ChoiceField(
-        choices=[
-            (str(y), str(y))
-            for y in range(
-                datetime.datetime.now().year - 5,
-                datetime.datetime.now().year + 6
-            )
-        ],
+        choices=[(y, y) for y in range(datetime.datetime.now().year, datetime.datetime.now().year + 6)],
         label="Año",
-        required=True,
-        initial=str(datetime.datetime.now().year)
+        required=True
     )
 
     def __init__(self, *args, **kwargs):
