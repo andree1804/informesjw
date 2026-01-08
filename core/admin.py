@@ -192,20 +192,6 @@ class PersonAdmin(admin.ModelAdmin):
 
 class ReportAdmin(admin.ModelAdmin):
     change_list_template = "admin/reportes_por_grupo.html"
-    year = forms.ChoiceField(label="Año", required=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        current_year = datetime.datetime.now().year
-
-        self.fields['year'].choices = [
-            (str(y), str(y))
-            for y in range(current_year - 5, current_year + 6)
-        ]
-
-        if not self.is_bound:
-            self.fields['year'].initial = str(current_year)
 
     def changelist_view(self, request, extra_context=None):
         now = datetime.now()

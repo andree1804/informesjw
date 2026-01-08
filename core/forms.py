@@ -30,11 +30,7 @@ class GroupSelectForm(forms.Form):
         required=True
     )
 
-    year = forms.ChoiceField(
-        choices=[(y, y) for y in range(datetime.datetime.now().year, datetime.datetime.now().year + 6)],
-        label="Año",
-        required=True
-    )
+    year = forms.ChoiceField(label="Año", required=True)
 
     month_ = forms.ChoiceField(
         choices=MONTH_CHOICES,
@@ -59,6 +55,16 @@ class GroupSelectForm(forms.Form):
         
         # Set current year
         self.fields['year_'].initial = now.year
+
+        current_year = datetime.datetime.now().year
+
+        self.fields['year'].choices = [
+            (str(y), str(y))
+            for y in range(current_year - 2, current_year + 6)
+        ]
+
+        if not self.is_bound:
+            self.fields['year'].initial = str(current_year)
 
 
 class PersonForm(forms.ModelForm):
