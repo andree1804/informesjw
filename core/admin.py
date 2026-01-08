@@ -200,7 +200,7 @@ class ReportAdmin(admin.ModelAdmin):
         else:
             previous_year = now.year
 
-        previous_month = now.month - 1
+        previous_month = 12 if now.month == 1 else now.month - 1
         persons = []
         group = []
         group_id = request.GET.get('group')
