@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reunion VMC - {{ periodo }}</title>
+    
+    <style id="critical-load-css">
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: white;
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999999;
+        }
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #d12027;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #main-wrapper { opacity: 0; }
+    </style>
+
+    <style>
+        /* ESTILOS DE PANTALLA */
+        @page { size: A4; margin: 0; } 
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        .semana-bloque { background: white; padding: 30px; margin: 0 auto 50px auto; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; }
+        
+        /* ESTILOS DE ELEMENTOS INTERNOS */
+        .header { display: flex; justify-content: space-between; border-bottom: 2.5px solid #222; padding-bottom: 2px; margin-bottom: 15px; }
+        .header h1 { color: #d12027; font-size: 11pt; margin: 0; text-transform: uppercase; font-weight: 800; }
+        .header .date { font-weight: bold; font-size: 8pt; color: #555; }
+        .row { display: grid; grid-template-columns: 1fr 240px 65px; gap: 12px; margin-bottom: 10px; align-items: start; }
+        .bar { color: white !important; padding: 6px 12px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 10pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .bg-tesoros { background-color: #567c82 !important; }
+        .bg-maestros { background-color: #ae852d !important; }
+        .bg-vida { background-color: #942911 !important; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 9.5pt; background: #fffdf2; padding: 2px; }
+        .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
+        .titulo-punto { font-weight: bold; display: block; }
+        .description { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
+        
+        /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA */
+        @media print { 
+            .no-print { display: none !important; } 
+            
+            body { 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                background: white;
+            } 
+
+            #main-wrapper { opacity: 1 !important; }
+
+            .semana-bloque { 
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important; 
+                padding: 1cm !important; /* Margen real de 1cm en todas las hojas */
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important; /* Salto después de cada bloque */
+            }
+
+            /* Evita el salto en el último bloque para que no salga una hoja final vacía */
+            .semana-bloque:last-of-type {
+                page-break-after: auto !important;
+            }
+
+            input::placeholder {
+                color: transparent !important;
+            }
+            /* Para navegadores antiguos o específicos */
+            input:-ms-input-placeholder { color: transparent !important; }
+            input::-ms-input-placeholder { color: transparent !important; }
+            input {border: none!important;}
+        }
+
+        .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .btn { padding: 12px 20px; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .btn-print { background: #d12027; }
+        .btn-clear { background: #CDDC39; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" class="no-print">
+        <div class="loader"></div>
+        <p style="font-family: Arial, sans-serif; font-weight: bold; color: #333;">Cargando programa mensual...</p>
+    </div>
+
+    <script>
+        document.getElementById('loading-screen').style.display = 'flex';
+    </script>
+
+    <div id="main-wrapper">
+        <div class="toolbar no-print">
+            <button class="btn btn-print" onclick="window.print()">🖨️</button>
+            <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
+        </div>
+
+        {% for r in reuniones %}
+        <div class="semana-bloque">
+            <div class="header">
+                <h1>REUNIÓN DE ENTRE SEMANA - VIDA Y MINISTERIO CRISTIANOS</h1>
+                <div class="date"><input id="{{ r.fecha }}" class="m-save" type="text" style="text-align: center; font-weight: bold;" placeholder="Día de reunión..."></div>
+                <div class="date">{{ r.fecha }}</div>
+            </div>
+
+            <div class="row">
+                <div class="titulo-punto">{{ r.programa.inicio.cancion }}</div>
+            </div>
+
+            <div class="row">
+                <strong>{{ r.texto }}</strong>
+                <div><strong>Presidente: </strong><input class="m-save" id="pres-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+                <input type="text" class="time-input" value="6:00">
+            </div>
+            <div class="row">
+                <div>{{ r.programa.inicio.intro }}</div>
+                <div><strong>Oración: </strong><input class="m-save" id="ora1-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+                <input type="text" class="time-input" value="6:05">
+            </div>
+
+            <div class="bar bg-tesoros">TESOROS DE LA BIBLIA</div>
+            {% for p in r.programa.tesoros %}
+            <div class="row">
+                <div>
+                    <strong>{{ p.numero }} {{ p.titulo }}</strong> 
+                    <span class="description">
+                        {% if "3." in p.numero %}{{ p.descripcion }}{% else %}{{ p.descripcion|slice:":10" }}{% endif %}
+                    </span>
+                </div>
+                <input id="t-{{ r.id }}-{{ p.numero }}" class="m-save" type="text" placeholder="Asignado...">
+                <input type="text" class="time-input" value="{{ p.hora }}">
+            </div>
+            {% endfor %}
+
+            <div class="bar bg-maestros">SEAMOS MEJORES MAESTROS</div>
+            {% for p in r.programa.maestros %}
+            <div class="row">
+                <div>
+                    <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
+                    <span class="description">{{ p.descripcion }}</span>
+                </div>
+                <div>
+                    <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                    <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                </div>
+                <input type="text" class="time-input" value="{{ p.hora }}">
+            </div>
+            {% endfor %}
+
+            <div class="bar bg-vida">NUESTRA VIDA CRISTIANA</div>
+            <div class="row">
+                <div class="titulo-punto">{{ r.programa.vida_cancion.cantico }}</div>
+                <div></div>
+                <input type="hidden" class="time-input" value="{{ r.programa.vida_cancion.hora }}">
+            </div>
+
+            {% for p in r.programa.vida %}
+            <div class="row">
+                <div>
+                    <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
+                    <span class="description">{{ p.descripcion|slice:":10" }}</span>
+                </div>
+                <div>
+                    <input class="m-save" id="v-{{ r.id }}-{{ forloop.counter }}" type="text" placeholder="Asignado...">
+                </div>
+                <input type="text" class="time-input" value="{{ p.hora }}">
+            </div>
+            {% endfor %}
+            <div class="row">
+                <div></div>
+                <div>
+                    <strong>Lector: </strong>
+                    <input class="m-save" id="lec-{{ r.id }}" type="text" style="width: 70%; float: right;" placeholder="Asignado...">
+                </div>
+            </div> 
+
+            <div class="bar" style="background-color: #333 !important;">CONCLUSIÓN</div>
+            <div class="row">
+                <div><strong>{{ r.programa.conclusion.cancion }}</strong></div>
+                <strong>Presidente</strong>
+                <input type="text" class="time-input" value="{{ r.programa.conclusion.hora }}">
+            </div>
+            <div class="row">
+                <div>{{ r.programa.conclusion.intro }}</div>
+                <div></div>
+                <input type="text" class="time-input" value="7:40">
+            </div>
+            <div class="row">
+                <div><strong>Oración: </strong><input class="m-save" id="ora2-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function quitarLoading() {
+            const loader = document.getElementById('loading-screen');
+            const wrapper = document.getElementById('main-wrapper');
+            if (loader) loader.style.setProperty('display', 'none', 'important');
+            if (wrapper) wrapper.style.opacity = '1';
+        }
+        window.addEventListener('load', quitarLoading);
+        setTimeout(quitarLoading, 5000);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('.m-save');
+            inputs.forEach(input => {
+                const savedValue = localStorage.getItem(input.id);
+                if (savedValue) input.value = savedValue;
+                input.addEventListener('input', (e) => {
+                    localStorage.setItem(e.target.id, e.target.value);
+                });
+            });
+        });
+
+        function limpiarFormulario() {
+            if (confirm("¿Borrar todos los nombres?")) {
+                const inputs = document.querySelectorAll('.m-save');
+                inputs.forEach(input => {
+                    localStorage.removeItem(input.id);
+                    input.value = "";
+                });
+            }
+        }
+    </script>
+</body>
+</html>

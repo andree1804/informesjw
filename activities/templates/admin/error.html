@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div style="padding: 20px; background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; border-radius: 5px;">
+    <h2>⚠️ Ha ocurrido un error</h2>
+    <p>{{ error }}</p>
+    <a href="javascript:history.back()" style="color: #2b6cb0; text-decoration: underline;">Volver atrás</a>
+</div>
+{% endblock %}

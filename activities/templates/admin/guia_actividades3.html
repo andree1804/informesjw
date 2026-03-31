@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+<style>
+    /* 1. ESTILOS GENERALES (Pantalla) */
+    @page { size: A4; margin: 10mm; }
+    body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #222; padding: 20px; }
+    
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 20px; }
+    .header h1 { color: #d12027; font-size: 14pt; margin: 0; text-transform: uppercase; font-weight: bold; }
+    .header .date { font-weight: bold; font-size: 11pt; align-self: flex-end; }
+    
+    .row { display: grid; grid-template-columns: 1fr 220px 60px; gap: 15px; margin-bottom: 12px; align-items: start; }
+    
+    /* Estilo base de las barras */
+    .bar { 
+        color: white !important; 
+        padding: 5px 10px; 
+        font-weight: bold; 
+        text-transform: uppercase; 
+        margin: 15px 0 10px 0; 
+        font-size: 10.5pt;
+        /* Forzar color en navegadores */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Colores específicos con !important para asegurar la impresión */
+    .bg-tesoros { background-color: #567c82 !important; }
+    .bg-maestros { background-color: #ae852d !important; }
+    .bg-vida { background-color: #942911 !important; }
+
+    input { border: none; border-bottom: 1px solid #ccc; width: 100%; font-family: inherit; font-size: 9.5pt; background: #fffdf2; }
+    .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #ccc; background: #fffdf2;}
+    .description { font-size: 8.5pt; color: #555; display: block; margin-top: 2px; }
+    .no-margin {
+	    margin-bottom: 0px!important;
+	}
+
+    /* 2. ESTILOS DE IMPRESIÓN */
+    @media print {
+        .no-print { display: none !important; }
+
+        body { 
+            padding: 0; 
+            margin: 0; 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* Mantener los colores de fondo de las barras */
+        .bar {
+            color: white !important;
+        }
+
+        /* Limpiar inputs para el PDF */
+        input { 
+            background: none !important; 
+            border: none !important; 
+            color: black !important;
+        }
+
+        /* Ocultar placeholders */
+        input::placeholder {
+            color: transparent !important;
+        }
+    }
+</style>
+</head>
+<body>
+
+    <button class="no-print" onclick="window.print()" style="margin-bottom: 20px; padding: 8px 16px; cursor: pointer;">🖨️ Imprimir PDF</button>
+
+    <div class="header">
+        <h1>REUNIÓN DE ENTRE SEMANA</h1>
+        <div class="date">{{ fecha }}</div>
+    </div>
+
+    <!-- Canción inicial DINÁMICA -->
+    <div class="row">
+        <div>{{ programa.inicio.cancion }}</div>
+    </div>
+    <div class="row">
+    	<strong>{{ texto }}</strong>
+    	<div><strong>Presidente: </strong><input style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+        <input type="text" class="time-input" value="6:00">
+    </div>
+    <div class="row">
+        <div>{{ programa.inicio.intro }}</div>
+        <div><strong>Oración: </strong><input style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+        <input type="text" class="time-input" value="6:05">
+    </div>
+
+    <div class="bar bg-tesoros">TESOROS DE LA BIBLIA</div>
+    {% for p in programa.tesoros %}
+    <div class="row">
+        <div>
+            <strong>{{ p.numero }} {{ p.titulo }}</strong> 
+            {% if p.tiempo %}<small></small>{% endif %}
+            {% if "3." in p.numero %}
+            	<span class="description">{{ p.descripcion }}</span>
+            {% else %}
+            	<span class="description">{{ p.descripcion|slice:":10" }}</span>
+            {% endif %}
+        </div>
+
+        {% if "1." in p.numero %}
+            <input type="text" placeholder="Asignado...">
+        	<input type="text" class="time-input" value="6:06">
+        {% elif "2." in p.numero %}
+            <input type="text" placeholder="Asignado...">
+        	<input type="text" class="time-input" value="{{ p.hora }}">
+        {% elif "3." in p.numero %}
+        	<input type="text" placeholder="Asignado...">
+        	<input type="text" class="time-input" value="{{ p.hora }}">
+        {% endif %}
+        
+    </div>
+    {% endfor %}
+
+    <div class="bar bg-maestros">SEAMOS MEJORES MAESTROS</div>
+    {% for p in programa.maestros %}
+    <div class="row">
+        <div>
+            <strong>{{ p.numero }} {{ p.titulo }}</strong> <small></small>
+            <span class="description">{{ p.descripcion }}</span>
+        </div>
+        <div>
+            <input type="text" placeholder="Publicador...">
+            <input type="text" placeholder="Ayudante..." style="margin-top:4px;">
+        </div>
+        <input type="text" class="time-input" value="{{ p.hora }}">
+    </div>
+    {% endfor %}
+
+    <div class="bar bg-vida">NUESTRA VIDA CRISTIANA</div>
+    
+    <!-- Canción de intermedio DINÁMICA -->
+    <div class="row" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+        <div style="font-weight: bold;">{{ programa.vida_cancion }}</div>
+        <div></div>
+    </div>
+
+    {% for p in programa.vida %}
+    <div class="row {% if forloop.last %}no-margin{% endif %}">
+        <div>
+            <strong>{{ p.numero }} {{ p.titulo }}</strong> <small></small>
+            <span class="description">{{ p.descripcion }}</span>
+        </div>
+        <input type="text" placeholder="Asignado...">
+        <input type="text" class="time-input" placeholder="{{ p.hora }}">
+    </div>
+    {% endfor %}
+    <div class="row">
+    	<div></div>
+    	<div>
+    	<strong>Lector: </strong><input style="float: right; width: 70%;" type="text" placeholder="Asignado...">
+    	</div>
+    </div>
+
+
+    <!-- Conclusión DINÁMICA -->
+    <div class="row">
+        <div><strong>{{ programa.conclusion.cancion }}</strong></div>
+        <strong>Presidente</strong>
+        <input type="text" class="time-input" placeholder="{{ programa.conclusion.hora }}">
+    </div>
+    <div class="row">
+        <div>{{ programa.conclusion.intro }}</div>
+        <div></div>
+        <input type="text" class="time-input" value="7:40">
+    </div>
+    <div class="row">
+        <div><strong>Oración: </strong><input style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
+    </div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-'''from django.shortcuts import render
+from django.shortcuts import render
 
 from django.http import JsonResponse
 from datetime import datetime, timedelta
@@ -173,4 +173,4 @@ def vida_ministerio(request, fecha):
         "secciones": parse_vmc_html(soup)
     }
 
-    return JsonResponse(data, json_dumps_params={"ensure_ascii": False, "indent": 2})'''
+    return JsonResponse(data, json_dumps_params={"ensure_ascii": False, "indent": 2})
