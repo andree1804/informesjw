@@ -195,21 +195,42 @@ def guia_mes_completo_view(request):
     # --- NUEVA SECCIÓN: FILTRADO DE PERSONAS SEGÚN TUS REGLAS ---
     from core.models import Person  # Asegúrate de importar tu modelo
     
+    # --- NUEVA LÓGICA: FILTRADO DE PERSONAS CON NOMBRE Y APELLIDOS ---
+    
+    # Función auxiliar para no repetir código
+    def obtener_lista_nombres_completos(queryset):
+        tuplas = queryset.values_list('names', 'paternal_surname').distinct()
+        return [
+            " ".join([texto for texto in tupla if texto]) 
+            for tupla in tuplas
+        ]
+
     # 1. Ancianos (Presidentes y Vida Cristiana)
-    ancianos = list(Person.objects.filter(privileges_permanent__name="Anciano").values_list('names', flat=True).distinct())
+    ancianos = obtener_lista_nombres_completos(
+        Person.objects.filter(privileges_permanent__name="Anciano")
+    )
     
     # 2. Ancianos y Siervos Ministeriales (Tesoros y Lector)
-    ancianos_y_siervos = list(Person.objects.filter(privileges_permanent__name__in=["Anciano", "Siervo Ministerial"]).values_list('names', flat=True).distinct())
+    ancianos_y_siervos = obtener_lista_nombres_completos(
+        Person.objects.filter(privileges_permanent__name__in=["Anciano", "Siervo Ministerial"])
+    )
     
     # 3. Varones bautizados (Lectura de la biblia y Oraciones)
-    varones_bautizados = list(Person.objects.filter(gender=True, baptism__isnull=False).values_list('names', flat=True).distinct())
+    varones_bautizados = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=True, baptism__isnull=False)
+    )
     
     # 4. Mujeres (Seamos mejores maestros - Preferencia)
-    mujeres = list(Person.objects.filter(gender=False).values_list('names', flat=True).distinct())
+    mujeres = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=False)
+    )
     
     # 5. Hombres (Seamos mejores maestros - Secundario)
-    hombres = list(Person.objects.filter(gender=True).values_list('names', flat=True).distinct())
+    hombres = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=True)
+    )
 
+    # Construcción del contexto
     contexto = {
         "reuniones": reuniones_mes, 
         "periodo": periodo,

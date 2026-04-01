@@ -303,9 +303,20 @@
                     if (input.id.startsWith('pres-')) {
                         input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
-                    // 2. ORACIÓN DE INICIO Y CONCLUSIÓN ('ora1-', 'ora2-')
-                    else if (input.id.startsWith('ora1-') || input.id.startsWith('ora2-')) {
-                        input.value = obtenerAleatorio(listas.varones, usados.varones);
+                    // 2. ORACIÓN DE INICIO ('ora1-') -> Clona directamente al presidente
+                    else if (input.id.startsWith('ora1-')) {
+                        const semanaId = input.id.split('-')[1]; // Extraemos el ID de la semana
+                        const inputPresidente = document.getElementById(`pres-${semanaId}`);
+                        
+                        if (inputPresidente) {
+                            input.value = inputPresidente.value;
+                        } else {
+                            // Por si acaso no encuentra el elemento por orden de carga
+                            input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                        }
+                    }
+                    else if (input.id.startsWith('ora2-')) {
+                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
                     // 3. TESOROS DE LA BIBLIA ('t-')
                     else if (input.id.startsWith('t-')) {
@@ -357,7 +368,7 @@
                     input.value = "";
                 });
                 // Recargamos para que vuelva a generar nombres aleatorios limpios
-                window.location.reload();
+                //window.location.reload();
             }
         }
     </script>

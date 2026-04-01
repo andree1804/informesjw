@@ -220,32 +220,40 @@ class ReportAdmin(admin.ModelAdmin):
             groups = Group.objects.all()
         else:
             groups = Group.objects.all()
-        if group_id and selected_month and selected_year:
-            # Obtener personas del grupo ordenadas
-            persons = list(
-                Person.objects.filter(group_id=group_id)
-                .select_related("group", "privilege")
-                .order_by("names")
-            )
 
-            # Obtener reportes existentes del mes/año
+        if group_id and selected_month and selected_year:
+            # 1. Obtener reportes existentes del mes/año para ese grupo específico
             reports = Report.objects.filter(
                 group_id=group_id,
                 month=selected_month,
                 year=selected_year
-            ).select_related("privilege", "person")
+            ).select_related("privilege", "person", "person__group")
 
             # Crear mapa rápido {person_id: Report}
             report_map = {r.person_id: r for r in reports}
 
-            # Inyectar el reporte en cada persona (si existe)
-            for person in persons:
-                report = report_map.get(person.id)
-                person.existing_report = report
-
-                # Si tiene reporte, usar privilegio del reporte
-                if report:
-                    person.privilege = report.privilege
+            # 2. ¿Ya existen reportes guardados para este grupo en este mes?
+            if reports.exists():
+                # CASO A: El mes ya fue registrado. Traemos SOLO a las personas que tienen reporte.
+                # Así, si alguien se cambió de grupo después, seguirá apareciendo aquí.
+                for report in reports:
+                    person = report.person
+                    person.existing_report = report
+                    person.privilege = report.privilege  # Usar privilegio que tenía al reportar
+                    persons.append(person)
+                
+                # Ordenamos la lista resultante por nombre
+                persons.sort(key=lambda x: x.names)
+            else:
+                # CASO B: Es un mes nuevo. Cargamos a los que pertenecen al grupo HOY.
+                persons = list(
+                    Person.objects.filter(group_id=group_id)
+                    .select_related("group", "privilege")
+                    .order_by("names")
+                )
+                
+                for person in persons:
+                    person.existing_report = None
 
 
         if request.method == "POST":
@@ -318,9 +326,14 @@ class ReportAdmin(admin.ModelAdmin):
             form.fields['group'].choices = [(group.id, group.name) for group in groups]
 
         if persons:
+            # Usamos el grupo del primer registro para el título del reporte
             group_name = persons[0].group.name
         else:
-            group_name = ''
+            # Si no hay personas pero seleccionamos un grupo, buscamos su nombre
+            try:
+                group_name = Group.objects.get(pk=group_id).name if group_id else ''
+            except Group.DoesNotExist:
+                group_name = ''
 
         context = {
             **self.admin_site.each_context(request),
