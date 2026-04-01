@@ -39,7 +39,7 @@
 		        {% for person in persons %}
 		        <tr>
 		          <td>
-		            {{ person.names }}
+		            {{ person.names }} {{ person.paternal_surname|default:"" }} {{ person.maternal_surname|default:"" }}
 		            <input type="hidden" name="person_{{ forloop.counter0 }}" value="{{ person.id }}">
 		          </td>
 		          <td>

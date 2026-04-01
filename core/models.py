@@ -32,20 +32,32 @@ class Person(models.Model):
         (True, 'Ungido'),
         (False, 'Muchedumbre'),
     ]
-    names = models.CharField(max_length=100)
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
-    privilege = models.ForeignKey(Privilege, on_delete=models.CASCADE)
-    privileges_permanent = models.ManyToManyField(PrivilegePermanent, null=True, blank=True)
+    names = models.CharField("Nombres", max_length=100)
+    paternal_surname = models.CharField("Apellido paterno", max_length=25, null=True, blank=True)
+    maternal_surname = models.CharField("Apellido materno", max_length=25, null=True, blank=True)
+    group = models.ForeignKey(verbose_name="Grupo", to=Group, on_delete=models.CASCADE)
+    privilege = models.ForeignKey(verbose_name="Privilegio", to=Privilege, on_delete=models.CASCADE)
+    privileges_permanent = models.ManyToManyField(verbose_name="Privilegio permanente", to=PrivilegePermanent, null=True, blank=True)
     birth = models.DateField("Fecha de nacimiento", null=True, blank=True)
     baptism = models.DateField("Fecha de bautismo", null=True, blank=True)
-    gender = models.BooleanField(choices=GENDER_CHOICES, default=False)
-    hope = models.BooleanField(choices=HOPE_CHOICES, default=False)
+    gender = models.BooleanField(verbose_name="Genero", choices=GENDER_CHOICES, default=False)
+    hope = models.BooleanField(verbose_name="Esperanza", choices=HOPE_CHOICES, default=False)
     phone = models.CharField("Teléfono", max_length=20, null=True, blank=True)
     address = models.CharField("Dirección", max_length=255, null=True, blank=True)
-    contacts = models.JSONField(default=list, blank=True)
+    contacts = models.JSONField("Contactos", default=list, blank=True)
 
     def __str__(self):
-        return f"{self.names}"
+        # Creamos una lista con los datos que no estén vacíos
+        partes_nombre = [self.names]
+        
+        if self.paternal_surname:
+            partes_nombre.append(self.paternal_surname)
+            
+        if self.maternal_surname:
+            partes_nombre.append(self.maternal_surname)
+            
+        # Los unimos todos separados por un espacio
+        return " ".join(partes_nombre)
 
 
 class Report(models.Model):

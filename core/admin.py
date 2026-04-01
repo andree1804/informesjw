@@ -153,7 +153,7 @@ export_to_xls.short_description = "Exportar seleccionados a XLS"
 
 class PersonAdmin(admin.ModelAdmin):
     form = PersonForm
-    list_display = ('id', 'names', 'group', 'privilege', 'baptism')
+    list_display = ('id', 'names', 'paternal_surname', 'maternal_surname', 'group', 'privilege', 'baptism')
 
     actions = [export_to_xls]
 
@@ -162,6 +162,8 @@ class PersonAdmin(admin.ModelAdmin):
             (None, {
                 'fields': [
                     'names',
+                    'paternal_surname',
+                    'maternal_surname',
                     'group',
                     'privilege',
                     'privileges_permanent',
@@ -389,7 +391,12 @@ class ReportAdmin(admin.ModelAdmin):
                     baptism = person.baptism.strftime('%d/%m/%Y')
                 # Campos individuales
                 if field == '900_1_Text_SanSerif':
-                    annotation.update(PdfDict(V=person.names))
+                    partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
+                    # Filtramos para quitar los valores que sean None o cadenas vacías
+                    nombre_valido = [texto for texto in partes_nombre if texto]
+                    nombre_completo = " ".join(nombre_valido)
+                    annotation.update(PdfDict(V=nombre_completo))
+
                 if field == '900_2_Text_SanSerif' and person.birth:
                     annotation.update(PdfDict(V=str(birth)))
                 if field == '900_3_CheckBox' and person.gender == True:
@@ -496,8 +503,12 @@ class ReportAdmin(admin.ModelAdmin):
             self.fill_pdf(person, list(reports), template_path, output_path)
 
             with open(output_path, 'rb') as f:
+                partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
+                nombre_valido = [texto for texto in partes_nombre if texto]
+                nombre_archivo = "_".join(nombre_valido)
+
                 response = HttpResponse(f.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename=tarjeta_{person.names}.pdf'
+                response['Content-Disposition'] = f'attachment; filename=tarjeta_{nombre_archivo}.pdf'
                 return response
 
         elif group_id:
@@ -518,13 +529,18 @@ class ReportAdmin(admin.ModelAdmin):
                     ).order_by('year', 'month')
 
                     if reports.exists():
+                        partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
+                        nombre_valido = [texto for texto in partes_nombre if texto]
+                        nombre_completo = "_".join(nombre_valido)
+
                         if person.privilege.name == 'Publicador':
                             priv_name = ''
                         else:
                             priv_name = f"-{person.privilege.name}"
-                        pdf_path = os.path.join(temp_dir, f"{person.names}{priv_name}.pdf")
+                            
+                        pdf_path = os.path.join(temp_dir, f"{nombre_completo}{priv_name}.pdf")
                         self.fill_pdf(person, list(reports), template_path, pdf_path, year_service)
-                        zipf.write(pdf_path, arcname=f"{person.names}{priv_name}.pdf")
+                        zipf.write(pdf_path, arcname=f"{nombre_completo}{priv_name}.pdf")
 
             with open(zip_filename, 'rb') as f:
                 response = HttpResponse(f.read(), content_type='application/zip')

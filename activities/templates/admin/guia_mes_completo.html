@@ -241,7 +241,7 @@
         {% endfor %}
     </div>
 
-    <script>
+<script>
         function quitarLoading() {
             const loader = document.getElementById('loading-screen');
             const wrapper = document.getElementById('main-wrapper');
@@ -251,11 +251,98 @@
         window.addEventListener('load', quitarLoading);
         setTimeout(quitarLoading, 5000);
 
+        // Pasamos las listas desde Django a JavaScript de forma segura
+        const listas = {
+            ancianos: {{ ancianos_list|safe|default:"[]" }},
+            ancianos_y_siervos: {{ ancianos_y_siervos_list|safe|default:"[]" }},
+            varones: {{ varones_list|safe|default:"[]" }},
+            mujeres: {{ mujeres_list|safe|default:"[]" }},
+            hombres: {{ hombres_list|safe|default:"[]" }}
+        };
+
+        // Función para obtener un elemento aleatorio sin repetir hasta agotar la lista
+        function obtenerAleatorio(lista, registroUsados) {
+            if (!lista || lista.length === 0) return "";
+            
+            // Filtrar los que aún no han sido usados en este ciclo
+            let disponibles = lista.filter(nombre => !registroUsados.has(nombre));
+            
+            // Si ya se usaron todos, reiniciamos el ciclo para esa lista
+            if (disponibles.length === 0) {
+                registroUsados.clear();
+                disponibles = lista;
+            }
+            
+            const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
+            registroUsados.add(elegido);
+            return elegido;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const inputs = document.querySelectorAll('.m-save');
+            
+            // Set para evitar que las personas se repitan seguido
+            const usados = {
+                ancianos: new Set(),
+                ancianos_y_siervos: new Set(),
+                varones: new Set(),
+                mujeres: new Set(),
+                hombres: new Set()
+            };
+
             inputs.forEach(input => {
                 const savedValue = localStorage.getItem(input.id);
-                if (savedValue) input.value = savedValue;
+                
+                if (savedValue) {
+                    // Si ya existía en LocalStorage lo respetamos
+                    input.value = savedValue;
+                } else {
+                    // Si el input está vacío, aplicamos tus reglas de negocio basadas en el ID del input:
+                    
+                    // 1. PRESIDENTE (Inicia con 'pres-')
+                    if (input.id.startsWith('pres-')) {
+                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                    }
+                    // 2. ORACIÓN DE INICIO Y CONCLUSIÓN ('ora1-', 'ora2-')
+                    else if (input.id.startsWith('ora1-') || input.id.startsWith('ora2-')) {
+                        input.value = obtenerAleatorio(listas.varones, usados.varones);
+                    }
+                    // 3. TESOROS DE LA BIBLIA ('t-')
+                    else if (input.id.startsWith('t-')) {
+                        if (input.id.endsWith('-3.')) { 
+                            // El punto 3 suele ser la lectura de la biblia (Varones)
+                            input.value = obtenerAleatorio(listas.varones, usados.varones);
+                        } else {
+                            // Los demás puntos de tesoros (Ancianos y Siervos)
+                            input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
+                        }
+                    }
+                    // 4. SEAMOS MEJORES MAESTROS ('m1-' publicador, 'm2-' ayudante)
+                    else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
+                        // 80% de probabilidad de que sea mujer, 20% hombre para menor continuidad
+                        const usarMujer = Math.random() < 0.8;
+                        if (usarMujer && listas.mujeres.length > 0) {
+                            input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
+                        } else {
+                            input.value = obtenerAleatorio(listas.hombres, usados.hombres);
+                        }
+                    }
+                    // 5. NUESTRA VIDA CRISTIANA ('v-')
+                    else if (input.id.startsWith('v-')) {
+                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                    }
+                    // 6. LECTOR ('lec-')
+                    else if (input.id.startsWith('lec-')) {
+                        input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
+                    }
+
+                    // Guardamos el valor generado aleatoriamente para que no cambie al refrescar
+                    if (input.value) {
+                        localStorage.setItem(input.id, input.value);
+                    }
+                }
+
+                // Guardar cambios manuales si el usuario edita el input
                 input.addEventListener('input', (e) => {
                     localStorage.setItem(e.target.id, e.target.value);
                 });
@@ -269,6 +356,8 @@
                     localStorage.removeItem(input.id);
                     input.value = "";
                 });
+                // Recargamos para que vuelva a generar nombres aleatorios limpios
+                window.location.reload();
             }
         }
     </script>
