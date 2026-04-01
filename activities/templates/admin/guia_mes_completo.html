@@ -55,6 +55,37 @@
         .titulo-punto { font-weight: bold; display: block; }
         .description { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
         
+        /* === NUEVOS ESTILOS RESPONSIVOS EXCLUSIVOS PARA PANTALLA === */
+        @media screen and (max-width: 768px) {
+            body { padding: 10px; }
+            .semana-bloque { padding: 15px; margin-bottom: 20px; }
+            
+            /* Cambiamos el Grid a una sola columna para que no se amontone */
+            .row { 
+                grid-template-columns: 1fr; 
+                gap: 5px; 
+                border-bottom: 1px solid #eee; 
+                padding-bottom: 10px;
+            }
+            
+            /* Forzamos los inputs y textos a tomar todo el ancho disponible */
+            input { width: 100% !important; box-sizing: border-box; }
+            .time-input { text-align: left; width: 50px !important; }
+            
+            /* Arreglo para los inputs flotantes en los headers de sección */
+            .row > div { width: 100% !important; }
+            .row > div input { float: none !important; width: 100% !important; margin-top: 5px; }
+            
+            /* Barra de herramientas fija flotando de forma más amigable */
+            .toolbar { 
+                top: auto; 
+                bottom: 20px; 
+                right: 20px; 
+                flex-direction: row; 
+            }
+            .btn { padding: 15px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        }
+
         /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA */
         @media print { 
             .no-print { display: none !important; } 
@@ -67,29 +98,28 @@
 
             #main-wrapper { opacity: 1 !important; }
 
+            /* Mantiene intacto tu formato de impresión en tablas de 3 columnas */
+            .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; }
+
             .semana-bloque { 
                 box-shadow: none !important;
                 border-radius: 0 !important;
                 margin: 0 !important; 
-                padding: 1cm !important; /* Margen real de 1cm en todas las hojas */
+                padding: 1cm !important; 
                 width: 100% !important;
                 max-width: 100% !important;
                 box-sizing: border-box !important;
-                page-break-after: always !important; /* Salto después de cada bloque */
+                page-break-after: always !important; 
             }
 
-            /* Evita el salto en el último bloque para que no salga una hoja final vacía */
             .semana-bloque:last-of-type {
                 page-break-after: auto !important;
             }
 
-            input::placeholder {
-                color: transparent !important;
-            }
-            /* Para navegadores antiguos o específicos */
+            input::placeholder { color: transparent !important; }
             input:-ms-input-placeholder { color: transparent !important; }
             input::-ms-input-placeholder { color: transparent !important; }
-            input {border: none!important;}
+            input { border: none !important; }
         }
 
         .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }

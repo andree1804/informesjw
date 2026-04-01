@@ -18,6 +18,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from core.views import vida_ministerio
+from activities.views import guia_mes_completo_view
 
 admin.site.site_header = "Panel de Administración"
 admin.site.site_title = "Panel de Administración"
@@ -26,5 +27,6 @@ admin.site.index_title = "Panel de Administración"
 urlpatterns = [
     # ... tus otras URLs ...
     path('admin/', admin.site.urls),
+    path('admin/guia-actividades/', guia_mes_completo_view, name='guia_mes'),
     path("api/vida-ministerio/<fecha>/", vida_ministerio),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
