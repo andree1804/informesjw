@@ -2,8 +2,9 @@
 {% block content %}
 <h1>Guía de Actividades</h1>
 <div>
+    {{ comment }}
     {{ content|safe }}
-
+    {{ endcomment }}
     <a href="/admin/guia-mes-completo/?url_jw={{ request.GET.url_jw }}">EDITAR E IMPRIMIR MES COMPLETO</a>
 </div>
 {% endblock %}
