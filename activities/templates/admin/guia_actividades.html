@@ -4,4 +4,39 @@
 <div>
     {{ content|safe }}
 </div>
+
+<script>
+    // 1. Activar el loading al salir
+    window.addEventListener("beforeunload", function() {
+        const overlay = document.createElement('div');
+        overlay.id = "custom-loading-overlay"; // Le ponemos ID para poder borrarlo luego
+        overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
+        
+        const loader = document.createElement('div');
+        loader.style.cssText = "border: 8px solid #f3f3f3; border-top: 8px solid #d12027; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px;";
+        
+        const texto = document.createElement('p');
+        texto.style.cssText = "font-weight: bold; color: #333;";
+        texto.innerText = "Este proceso demora en cargar, tenga paciencia";
+
+        const style = document.createElement('style');
+        style.innerHTML = "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+        
+        document.head.appendChild(style);
+        overlay.appendChild(loader);
+        overlay.appendChild(texto);
+        document.body.appendChild(overlay);
+    });
+
+    // 2. EL TRUCO: Apagar el loading si el usuario vuelve atrás
+    window.addEventListener("pageshow", function(event) {
+        // persisted es true si la página se cargó desde la memoria caché (botón atrás)
+        if (event.persisted) {
+            const overlay = document.getElementById("custom-loading-overlay");
+            if (overlay) {
+                overlay.remove(); // Destruimos el loading si existía
+            }
+        }
+    });
+</script>
 {% endblock %}
