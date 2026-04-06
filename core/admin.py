@@ -216,7 +216,7 @@ class ReportAdmin(admin.ModelAdmin):
         })
 
         if request.user.username != 'admin':
-            group_default = Group.objects.filter(name=request.user.username.capitalize()).first()
+            group_default = Group.objects.filter(name=request.user.first_name.capitalize()).first()
             groups = Group.objects.all()
         else:
             groups = Group.objects.all()
