@@ -83,7 +83,7 @@
                 right: 20px; 
                 flex-direction: row; 
             }
-            .btn { padding: 15px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+            .btn { padding: 5px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
         }
 
         /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA */
@@ -122,10 +122,12 @@
             input { border: none !important; }
         }
 
-        .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
-        .btn { padding: 12px 20px; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.2s; }
-        .btn-print { background: #d12027; }
-        .btn-clear { background: #CDDC39; }
+        /* Ajustes específicos para los botones solicitados */
+        .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .btn { padding: 5px 5px; color: white; border: none; cursor: pointer; transition: transform 0.2s; font-size: 1.5rem; }
+        .btn-print { background: transparent; }
+        .btn-clear { background: transparent; }
+        .btn-back { background: #333333; color: white; border-radius: 5px; font-weight: bold; font-size: 1.2rem; padding: 2px 5px; }
     </style>
 </head>
 <body>
@@ -140,6 +142,8 @@
 
     <div id="main-wrapper">
         <div class="toolbar no-print">
+            <button class="btn btn-back" onclick="window.history.back()">⬅</button>
+            
             <button class="btn btn-print" onclick="window.print()">🖨️</button>
             <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
         </div>
