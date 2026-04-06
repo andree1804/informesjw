@@ -80,7 +80,7 @@
 		</fieldset>
 	    <!--<button type="submit" class="default" style="margin-top: 20px;">Guardar Reportes</button>-->
 	    <div class="submit-row">
-	    	{% if request.user.username == "admin" or request.user.username == group_name|lower %}	
+	    	{% if request.user.username == "admin" or request.user.first_name == group_name|lower %}	
 	    		<input type="submit" class="default" value="Guardar informe">
 	    	{% endif %}
 	    	{% if request.user.username == "admin" %}
