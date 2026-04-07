@@ -1,15 +1,14 @@
 {% extends "admin/base_site.html" %}
-{% block content %}
-<h1>Guía de Actividades</h1>
-<div>
-    {{ content|safe }}
-</div>
+{% load static %} {% block content %}
+
+{{ content|safe }}
+
 
 <script>
-    // 1. Activar el loading al salir
+    // 1. Activar el loading al salir de la página
     window.addEventListener("beforeunload", function() {
         const overlay = document.createElement('div');
-        overlay.id = "custom-loading-overlay"; // Le ponemos ID para poder borrarlo luego
+        overlay.id = "custom-loading-overlay";
         overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
         
         const loader = document.createElement('div');
@@ -28,15 +27,16 @@
         document.body.appendChild(overlay);
     });
 
-    // 2. EL TRUCO: Apagar el loading si el usuario vuelve atrás
+    // 2. Desactivar el loading si se usa el botón de "Atrás"
     window.addEventListener("pageshow", function(event) {
-        // persisted es true si la página se cargó desde la memoria caché (botón atrás)
         if (event.persisted) {
             const overlay = document.getElementById("custom-loading-overlay");
             if (overlay) {
-                overlay.remove(); // Destruimos el loading si existía
+                overlay.remove();
             }
         }
     });
 </script>
+
+<script src="{% static 'admin/js/loading_admin.js' %}"></script>
 {% endblock %}

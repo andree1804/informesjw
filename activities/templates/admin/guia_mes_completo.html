@@ -37,7 +37,9 @@
 
     <style>
         /* ESTILOS DE PANTALLA */
-        @page { size: A4; margin: 0; } 
+        /* CORRECCIÓN: Margen base para navegadores */
+        @page { size: A4; margin: 0.5cm !important; } 
+
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
         .semana-bloque { background: white; padding: 30px; margin: 0 auto 50px auto; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; }
         
@@ -61,7 +63,6 @@
             body { padding: 10px; }
             .semana-bloque { padding: 15px; margin-bottom: 20px; }
             
-            /* Cambiamos el Grid a una sola columna para que no se amontone */
             .row { 
                 grid-template-columns: 1fr; 
                 gap: 5px; 
@@ -69,15 +70,12 @@
                 padding-bottom: 10px;
             }
             
-            /* Forzamos los inputs y textos a tomar todo el ancho disponible */
             input { width: 100% !important; box-sizing: border-box; }
             .time-input { text-align: left; width: 50px !important; }
             
-            /* Arreglo para los inputs flotantes en los headers de sección */
             .row > div { width: 100% !important; }
             .row > div input { float: none !important; width: 100% !important; margin-top: 5px; }
             
-            /* Barra de herramientas fija flotando de forma más amigable */
             .toolbar { 
                 top: auto; 
                 bottom: 20px; 
@@ -87,8 +85,13 @@
             .btn { padding: 5px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
         }
 
-        /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA */
+        /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA PARA PC Y MÓVIL */
         @media print { 
+            @page { 
+                size: A4; 
+                margin: 0.5cm !important; /* Fuerza el margen estrecho en teléfonos */
+            }
+
             .no-print { display: none !important; } 
             
             body { 
@@ -99,14 +102,13 @@
 
             #main-wrapper { opacity: 1 !important; }
 
-            /* Mantiene intacto tu formato de impresión en tablas de 3 columnas */
             .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; }
 
             .semana-bloque { 
                 box-shadow: none !important;
                 border-radius: 0 !important;
                 margin: 0 !important; 
-                padding: 1cm !important; 
+                padding: 0.5cm !important; /* Coincide con el margen de la página */
                 width: 100% !important;
                 max-width: 100% !important;
                 box-sizing: border-box !important;
@@ -118,9 +120,7 @@
             }
 
             input::placeholder { color: transparent !important; }
-            input:-ms-input-placeholder { color: transparent !important; }
-            input::-ms-input-placeholder { color: transparent !important; }
-            input { border: none !important; }
+            input { border: none !important; background: transparent !important; }
         }
 
         /* Ajustes específicos para los botones solicitados */
@@ -256,7 +256,6 @@
         window.addEventListener('load', quitarLoading);
         setTimeout(quitarLoading, 5000);
 
-        // Pasamos las listas desde Django a JavaScript de forma segura
         const listas = {
             ancianos: {{ ancianos_list|safe|default:"[]" }},
             ancianos_y_siervos: {{ ancianos_y_siervos_list|safe|default:"[]" }},
@@ -265,19 +264,13 @@
             hombres: {{ hombres_list|safe|default:"[]" }}
         };
 
-        // Función para obtener un elemento aleatorio sin repetir hasta agotar la lista
         function obtenerAleatorio(lista, registroUsados) {
             if (!lista || lista.length === 0) return "";
-            
-            // Filtrar los que aún no han sido usados en este ciclo
             let disponibles = lista.filter(nombre => !registroUsados.has(nombre));
-            
-            // Si ya se usaron todos, reiniciamos el ciclo para esa lista
             if (disponibles.length === 0) {
                 registroUsados.clear();
                 disponibles = lista;
             }
-            
             const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
             registroUsados.add(elegido);
             return elegido;
@@ -285,8 +278,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const inputs = document.querySelectorAll('.m-save');
-            
-            // Set para evitar que las personas se repitan seguido
             const usados = {
                 ancianos: new Set(),
                 ancianos_y_siervos: new Set(),
@@ -297,45 +288,32 @@
 
             inputs.forEach(input => {
                 const savedValue = localStorage.getItem(input.id);
-                
                 if (savedValue) {
-                    // Si ya existía en LocalStorage lo respetamos
                     input.value = savedValue;
                 } else {
-                    // Si el input está vacío, aplicamos tus reglas de negocio basadas en el ID del input:
-                    
-                    // 1. PRESIDENTE (Inicia con 'pres-')
                     if (input.id.startsWith('pres-')) {
                         input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
-                    // 2. ORACIÓN DE INICIO ('ora1-') -> Clona directamente al presidente
                     else if (input.id.startsWith('ora1-')) {
-                        const semanaId = input.id.split('-')[1]; // Extraemos el ID de la semana
+                        const semanaId = input.id.split('-')[1];
                         const inputPresidente = document.getElementById(`pres-${semanaId}`);
-                        
                         if (inputPresidente) {
                             input.value = inputPresidente.value;
                         } else {
-                            // Por si acaso no encuentra el elemento por orden de carga
                             input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                         }
                     }
                     else if (input.id.startsWith('ora2-')) {
                         input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
-                    // 3. TESOROS DE LA BIBLIA ('t-')
                     else if (input.id.startsWith('t-')) {
                         if (input.id.endsWith('-3.')) { 
-                            // El punto 3 suele ser la lectura de la biblia (Varones)
                             input.value = obtenerAleatorio(listas.varones, usados.varones);
                         } else {
-                            // Los demás puntos de tesoros (Ancianos y Siervos)
                             input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
                         }
                     }
-                    // 4. SEAMOS MEJORES MAESTROS ('m1-' publicador, 'm2-' ayudante)
                     else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
-                        // 80% de probabilidad de que sea mujer, 20% hombre para menor continuidad
                         const usarMujer = Math.random() < 0.8;
                         if (usarMujer && listas.mujeres.length > 0) {
                             input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
@@ -343,22 +321,18 @@
                             input.value = obtenerAleatorio(listas.hombres, usados.hombres);
                         }
                     }
-                    // 5. NUESTRA VIDA CRISTIANA ('v-')
                     else if (input.id.startsWith('v-')) {
                         input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
-                    // 6. LECTOR ('lec-')
                     else if (input.id.startsWith('lec-')) {
                         input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
                     }
 
-                    // Guardamos el valor generado aleatoriamente para que no cambie al refrescar
                     if (input.value) {
                         localStorage.setItem(input.id, input.value);
                     }
                 }
 
-                // Guardar cambios manuales si el usuario edita el input
                 input.addEventListener('input', (e) => {
                     localStorage.setItem(e.target.id, e.target.value);
                 });
@@ -372,16 +346,12 @@
                     localStorage.removeItem(input.id);
                     input.value = "";
                 });
-                // Recargamos para que vuelva a generar nombres aleatorios limpios
-                //window.location.reload();
             }
         }
 
-
-        // 1. Activar el loading al salir
         window.addEventListener("beforeunload", function() {
             const overlay = document.createElement('div');
-            overlay.id = "custom-loading-overlay"; // Le ponemos ID para poder borrarlo luego
+            overlay.id = "custom-loading-overlay";
             overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
             
             const loader = document.createElement('div');
@@ -400,17 +370,14 @@
             document.body.appendChild(overlay);
         });
 
-        // 2. EL TRUCO: Apagar el loading si el usuario vuelve atrás
         window.addEventListener("pageshow", function(event) {
-            // persisted es true si la página se cargó desde la memoria caché (botón atrás)
             if (event.persisted) {
                 const overlay = document.getElementById("custom-loading-overlay");
                 if (overlay) {
-                    overlay.remove(); // Destruimos el loading si existía
+                    overlay.remove();
                 }
             }
         });
-
     </script>
 </body>
 </html>

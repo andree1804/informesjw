@@ -1,12 +1,15 @@
 document.addEventListener("DOMContentLoaded", function() {
-    // Buscamos el enlace en el menú lateral del admin de Django
-    // Usamos el href que me diste en el mensaje anterior
-    const enlaceGuia = document.querySelector('a[href*="/admin/activities/guiaactividades/"]');
+    // Buscamos el enlace en el sidebar. 
+    // El href suele contener el nombre del modelo 'guiaactividades'
+    const enlaces = document.querySelectorAll('a[href*="guiaactividades"]');
 
-    if (enlaceGuia) {
-        enlaceGuia.addEventListener("click", function(e) {
-            // Creamos el contenedor del Loading
+    enlaces.forEach(enlace => {
+        enlace.addEventListener("click", function(e) {
+            // Evitar que se active con clic derecho
+            if (e.button !== 0) return;
+
             const overlay = document.createElement('div');
+            overlay.id = "loading-global-admin";
             overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
             
             const loader = document.createElement('div');
@@ -14,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function() {
             
             const texto = document.createElement('p');
             texto.style.cssText = "font-weight: bold; color: #333;";
-            texto.innerText = "Conectando con JW.org y procesando las actividades...";
+            texto.innerText = "Cargando actividades desde JW.org...";
 
             const style = document.createElement('style');
             style.innerHTML = "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
@@ -24,5 +27,5 @@ document.addEventListener("DOMContentLoaded", function() {
             overlay.appendChild(texto);
             document.body.appendChild(overlay);
         });
-    }
+    });
 });

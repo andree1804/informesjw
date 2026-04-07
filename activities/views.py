@@ -5,6 +5,7 @@ import re
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from core.models import Person
+from django.contrib import admin  # <-- ESTA ES LA QUE ACTIVA EL SIDEBAR
 
 # =====================================================================
 # VISTA 1: LISTADO DE REVISTAS (MODIFICADA PARA SALTAR A LA VISTA FINAL)
@@ -14,12 +15,16 @@ def guia_actividades_view(request):
     url_base_jw = "https://www.jw.org"
     url_principal = f"{url_base_jw}/es/biblioteca/guia-actividades-reunion-testigos-jehova/"
 
+    # --- PASO CLAVE: Obtener el contexto del Admin (esto activa el sidebar) ---
+    context = admin.site.each_context(request)
+
     try:
         response = requests.get(url_principal, timeout=30)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
     except Exception as e:
-        return render(request, "admin/guia_actividades.html", {"content": f"Error: {e}"})
+        context.update({"content": f"Error: {e}"})
+        return render(request, "admin/guia_actividades.html", context)
 
     h2_target = soup.find("h2", string=lambda t: t and "GUÍA DE ACTIVIDADES" in t.upper())
     
@@ -34,15 +39,21 @@ def guia_actividades_view(request):
                 if link_jw.startswith('/'): 
                     link_jw = url_base_jw + link_jw
                 
-                # REESCRITURA: Ahora el enlace manda directo a generar el mes completo
                 if link_jw:
+                    # Enlace directo al generador del mes
                     new_link = f"/admin/guia-mes-completo/?url_jw={link_jw}"
                     if div.find("a"):
                         div.find("a")["href"] = new_link
                 
                 html_final += div.prettify()
 
-    return render(request, "admin/guia_actividades.html", {"content": html_final or "<p>No hay datos</p>"})
+    # --- PASO CLAVE: Actualizamos el contexto con tu contenido scrapeado ---
+    context.update({
+        "content": html_final or "<p>No hay datos</p>",
+        "title": "Guía de Actividades" # Esto aparecerá en la barra superior del admin
+    })
+
+    return render(request, "admin/guia_actividades.html", context)
 
 
 # =====================================================================

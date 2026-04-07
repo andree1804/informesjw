@@ -27,6 +27,6 @@ admin.site.index_title = "Panel de Administración"
 urlpatterns = [
     # ... tus otras URLs ...
     path('admin/', admin.site.urls),
-    path('admin/guia-actividades/', guia_mes_completo_view, name='guia_mes'),
+    path('admin/guia-actividades/', guia_mes_completo_view, name='guia_actividades'),
     path("api/vida-ministerio/<fecha>/", vida_ministerio),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

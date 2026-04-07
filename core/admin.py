@@ -155,6 +155,8 @@ class PersonAdmin(admin.ModelAdmin):
     form = PersonForm
     list_display = ('id', 'names', 'paternal_surname', 'maternal_surname', 'group', 'privilege', 'baptism')
 
+    search_fields = ('names', 'paternal_surname', 'maternal_surname')
+
     actions = [export_to_xls]
 
     def get_fieldsets(self, request, obj=None):

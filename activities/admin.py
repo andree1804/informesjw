@@ -10,11 +10,13 @@ original_get_urls = admin.site.get_urls
 
 @admin.register(GuiaActividades)
 class GuiaActividadesAdmin(admin.ModelAdmin):
+    class Media:
+        # Esto inyecta el JS en cualquier página donde este modelo sea visible (incluyendo el dashboard)
+        js = ('admin/js/loading_admin.js',)
     
-    # Este método controla qué pasa cuando entras al modelo en el admin
     def changelist_view(self, request, extra_context=None):
-        # Redirige directamente a la URL de tu herramienta
-        return redirect(reverse('guia_mes'))
+        # Tu redirección actual
+        return redirect(reverse('guia_actividades'))
         
     # Bloqueamos los permisos para que nadie intente "añadir" o "borrar" este modelo falso
     def has_add_permission(self, request):
