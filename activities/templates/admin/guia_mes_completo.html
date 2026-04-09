@@ -39,18 +39,18 @@
         /* ESTILOS DE PANTALLA */
         @page { size: A4; margin: 0.5cm !important; } 
 
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
         .semana-bloque { background: white; padding: 30px; margin: 0 auto 50px auto; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; }
         
         .header { display: flex; justify-content: space-between; border-bottom: 2.5px solid #222; padding-bottom: 2px; margin-bottom: 15px; }
         .header h1 { color: #d12027; font-size: 12pt; margin: 0; text-transform: uppercase; font-weight: 800; }
-        .header .date { font-weight: bold; font-size: 8pt; color: #555; }
+        .header .date { font-weight: bold; font-size: 5pt; color: #555; }
         .row { display: grid; grid-template-columns: 1fr 240px 65px; gap: 12px; margin-bottom: 10px; align-items: start; }
         .bar { color: white !important; padding: 0px 6px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 14pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
         .bg-vida { background-color: #942911 !important; }
-        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11.5pt; background: #fffdf2; padding: 2px; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11pt; background: #fffdf2; padding: 2px; }
         .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
         .titulo-punto { font-weight: bold; display: block; }
         .seniority { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
@@ -70,11 +70,38 @@
 
         @media print { 
             @page { size: A4; margin: 0.5cm !important; }
+            
+            .row { 
+                display: grid !important; 
+                grid-template-columns: 1fr 240px 65px !important; 
+                gap: 12px !important; 
+                /* Añadimos esto para asegurar que la fila no se estire de más en móviles */
+                width: 100% !important;
+            }
+            
             .no-print { display: none !important; } 
-            body { padding: 0 !important; margin: 0 !important; background: white; } 
+            
+            body { 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                background: white; 
+                /* CRÍTICO PARA MÓVILES: Evita que el navegador reescale el contenido */
+                width: 210mm; 
+            } 
+            
             #main-wrapper { opacity: 1 !important; }
-            .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; }
-            .semana-bloque { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0.5cm !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; page-break-after: always !important; }
+            
+            .semana-bloque { 
+                box-shadow: none !important; 
+                border-radius: 0 !important; 
+                margin: 0 !important; 
+                padding: 0.5cm !important; 
+                width: 100% !important; 
+                max-width: 100% !important; 
+                box-sizing: border-box !important; 
+                page-break-after: always !important; 
+            }
+            
             .semana-bloque:last-of-type { page-break-after: auto !important; }
             input::placeholder { color: transparent !important; }
             input { border: none !important; background: transparent !important; }
@@ -117,7 +144,7 @@
             <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
         </div>
 
-        <div class="master-dia-container no-print row">
+        <div class="master-dia-container row no-print">
             <div>
                 <strong>Día de reunión:</strong>
                 <select id="master-dia-control" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
@@ -139,11 +166,11 @@
             <div class="header">
                 <h1>REUNIÓN DE ENTRE SEMANA - VIDA Y MINISTERIO CRISTIANOS</h1>
                 <div class="date">
+                    <div class="date" style="text-align: center;">
+                        {{ r.fecha }}
+                    </div>
                     <input type="hidden" id="fecha-{{ r.fecha }}" class="fecha-referencia" value="{{ r.fecha }}">
                     <input id="hoy-{{ r.fecha }}" class="m-save" type="text" style="text-align: center; font-weight: bold;" placeholder="Día..." value="">
-                </div>
-                <div class="date">
-                    {{ r.fecha }}
                 </div>
             </div>
 
@@ -190,7 +217,12 @@
                 {% else %}
                 <div>
                     <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
-                    <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                    <div class="row">
+                        <div style="margin-top: 5px;"><strong>Ayudante: </strong></div>
+                        <div>
+                            <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
                 <input type="text" class="time-input" value="{{ p.hora }}">
@@ -398,7 +430,7 @@
             overlay.appendChild(texto);
             document.body.appendChild(overlay);
         });
-        
+
 
         window.addEventListener("pageshow", function(event) {
             if (event.persisted) {
