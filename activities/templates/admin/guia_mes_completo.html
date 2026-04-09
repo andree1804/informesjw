@@ -65,6 +65,7 @@
             .row > div input { float: none !important; width: 100% !important; margin-top: 5px; }
             .toolbar { top: auto; bottom: 20px; right: 20px; flex-direction: row; }
             .btn { padding: 5px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+            .master-dia-container {grid-template-columns: 1fr !important; padding:  10px 10px !important;}
         }
 
         @media print { 
@@ -91,10 +92,11 @@
             background: white;
             padding: 10px 30px;
             border-radius: 4px;
-            display: flex;
             align-items: center;
             gap: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
         }
     </style>
 </head>
@@ -115,18 +117,21 @@
             <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
         </div>
 
-        <div class="master-dia-container no-print">
-            <strong>Día de reunión:</strong>
-            <select id="master-dia-control" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
-                <option value="lunes">Lunes</option>
-                <option value="martes">Martes</option>
-                <option value="miercoles">Miércoles</option>
-                <option value="jueves">Jueves</option>
-                <option value="viernes" selected>Viernes</option>
-            </select>
-
-            <strong>Hora de inicio de reunión:</strong>
-            <input type="text" id="hora-inicio" value="6:00" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
+        <div class="master-dia-container no-print row">
+            <div>
+                <strong>Día de reunión:</strong>
+                <select id="master-dia-control" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
+                    <option value="lunes">Lunes</option>
+                    <option value="martes">Martes</option>
+                    <option value="miercoles">Miércoles</option>
+                    <option value="jueves">Jueves</option>
+                    <option value="viernes" selected>Viernes</option>
+                </select>
+            </div>
+            <div>
+                <strong>Hora de inicio de reunión:</strong>
+                <input type="text" id="hora-inicio" value="6:00" placeholder="6:00" style="width: 36%!important; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
+            </div>
         </div>
         
         {% for r in reuniones %}
