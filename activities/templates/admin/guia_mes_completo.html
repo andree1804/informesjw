@@ -37,98 +37,65 @@
 
     <style>
         /* ESTILOS DE PANTALLA */
-        /* CORRECCIÓN: Margen base para navegadores */
         @page { size: A4; margin: 0.5cm !important; } 
 
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
         .semana-bloque { background: white; padding: 30px; margin: 0 auto 50px auto; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; }
         
-        /* ESTILOS DE ELEMENTOS INTERNOS */
         .header { display: flex; justify-content: space-between; border-bottom: 2.5px solid #222; padding-bottom: 2px; margin-bottom: 15px; }
-        .header h1 { color: #d12027; font-size: 11pt; margin: 0; text-transform: uppercase; font-weight: 800; }
+        .header h1 { color: #d12027; font-size: 12pt; margin: 0; text-transform: uppercase; font-weight: 800; }
         .header .date { font-weight: bold; font-size: 8pt; color: #555; }
         .row { display: grid; grid-template-columns: 1fr 240px 65px; gap: 12px; margin-bottom: 10px; align-items: start; }
-        .bar { color: white !important; padding: 6px 12px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 10pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .bar { color: white !important; padding: 0px 6px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 14pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
         .bg-vida { background-color: #942911 !important; }
-        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 9.5pt; background: #fffdf2; padding: 2px; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11.5pt; background: #fffdf2; padding: 2px; }
         .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
         .titulo-punto { font-weight: bold; display: block; }
-        .description { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
+        .seniority { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
         
-        
-        /* === NUEVOS ESTILOS RESPONSIVOS EXCLUSIVOS PARA PANTALLA === */
         @media screen and (max-width: 768px) {
             body { padding: 10px; }
             .semana-bloque { padding: 15px; margin-bottom: 20px; }
-            
-            .row { 
-                grid-template-columns: 1fr; 
-                gap: 5px; 
-                border-bottom: 1px solid #eee; 
-                padding-bottom: 10px;
-            }
-            
+            .row { grid-template-columns: 1fr; gap: 5px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
             input { width: 100% !important; box-sizing: border-box; }
             .time-input { text-align: left; width: 50px !important; }
-            
             .row > div { width: 100% !important; }
             .row > div input { float: none !important; width: 100% !important; margin-top: 5px; }
-            
-            .toolbar { 
-                top: auto; 
-                bottom: 20px; 
-                right: 20px; 
-                flex-direction: row; 
-            }
+            .toolbar { top: auto; bottom: 20px; right: 20px; flex-direction: row; }
             .btn { padding: 5px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
         }
 
-        /* CONFIGURACIÓN DE IMPRESIÓN CORREGIDA PARA PC Y MÓVIL */
         @media print { 
-            @page { 
-                size: A4; 
-                margin: 0.5cm !important; /* Fuerza el margen estrecho en teléfonos */
-            }
-
+            @page { size: A4; margin: 0.5cm !important; }
             .no-print { display: none !important; } 
-            
-            body { 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                background: white;
-            } 
-
+            body { padding: 0 !important; margin: 0 !important; background: white; } 
             #main-wrapper { opacity: 1 !important; }
-
             .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; }
-
-            .semana-bloque { 
-                box-shadow: none !important;
-                border-radius: 0 !important;
-                margin: 0 !important; 
-                padding: 0.5cm !important; /* Coincide con el margen de la página */
-                width: 100% !important;
-                max-width: 100% !important;
-                box-sizing: border-box !important;
-                page-break-after: always !important; 
-            }
-
-            .semana-bloque:last-of-type {
-                page-break-after: auto !important;
-            }
-
+            .semana-bloque { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0.5cm !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; page-break-after: always !important; }
+            .semana-bloque:last-of-type { page-break-after: auto !important; }
             input::placeholder { color: transparent !important; }
             input { border: none !important; background: transparent !important; }
         }
 
-        /* Ajustes específicos para los botones solicitados */
         .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
         .btn { padding: 5px 5px; color: white; border: none; cursor: pointer; transition: transform 0.2s; font-size: 1.5rem; }
         .btn-print { background: transparent; }
         .btn-clear { background: transparent; }
         .btn-back { background: #333333; color: white; border-radius: 5px; font-weight: bold; font-size: 1.2rem; padding: 2px 5px; }
+
+        .master-dia-container {
+            max-width: 850px;
+            margin: 0 auto 10px auto;
+            background: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
@@ -144,17 +111,35 @@
     <div id="main-wrapper">
         <div class="toolbar no-print">
             <button class="btn btn-back" onclick="window.history.back()">⬅</button>
-            
             <button class="btn btn-print" onclick="window.print()">🖨️</button>
             <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
         </div>
 
+        <div class="master-dia-container no-print">
+            <strong>Día de reunión:</strong>
+            <select id="master-dia-control" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
+                <option value="lunes">Lunes</option>
+                <option value="martes">Martes</option>
+                <option value="miercoles">Miércoles</option>
+                <option value="jueves">Jueves</option>
+                <option value="viernes" selected>Viernes</option>
+            </select>
+
+            <strong>Hora de inicio de reunión:</strong>
+            <input type="text" id="hora-inicio" value="6:00" style="width: 150px; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
+        </div>
+        
         {% for r in reuniones %}
         <div class="semana-bloque">
             <div class="header">
                 <h1>REUNIÓN DE ENTRE SEMANA - VIDA Y MINISTERIO CRISTIANOS</h1>
-                <div class="date"><input id="{{ r.fecha }}" class="m-save" type="text" style="text-align: center; font-weight: bold;" placeholder="Día de reunión..."></div>
-                <div class="date">{{ r.fecha }}</div>
+                <div class="date">
+                    <input type="hidden" id="fecha-{{ r.fecha }}" class="fecha-referencia" value="{{ r.fecha }}">
+                    <input id="hoy-{{ r.fecha }}" class="m-save" type="text" style="text-align: center; font-weight: bold;" placeholder="Día..." value="">
+                </div>
+                <div class="date">
+                    {{ r.fecha }}
+                </div>
             </div>
 
             <div class="row">
@@ -164,12 +149,12 @@
             <div class="row">
                 <strong>{{ r.texto }}</strong>
                 <div><strong>Presidente: </strong><input class="m-save" id="pres-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
-                <input type="text" class="time-input" value="6:00">
+                <input id="can-ora-{{ r.id }}" type="text" class="time-input" value="6:00">
             </div>
             <div class="row">
                 <div>{{ r.programa.inicio.intro }}</div>
                 <div><strong>Oración: </strong><input class="m-save" id="ora1-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
-                <input type="text" class="time-input" value="6:05">
+                <input id="intro-{{ r.id }}" type="text" class="time-input" value="6:05">
             </div>
 
             <div class="bar bg-tesoros">TESOROS DE LA BIBLIA</div>
@@ -193,10 +178,16 @@
                     <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
                     <span class="description">{{ p.descripcion }}</span>
                 </div>
+                {% if p.titulo == "Discurso" %}
+                <div>
+                    <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                </div>
+                {% else %}
                 <div>
                     <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
                     <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
                 </div>
+                {% endif %}
                 <input type="text" class="time-input" value="{{ p.hora }}">
             </div>
             {% endfor %}
@@ -277,65 +268,105 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const mesesMap = { 'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5, 'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11 };
+            const diasMap = { 'lunes': 0, 'martes': 1, 'miercoles': 2, 'miércoles': 2, 'jueves': 3, 'viernes': 4, 'sabado': 5, 'sábado': 5, 'domingo': 6 };
+            const masterInput = document.getElementById('master-dia-control');
+            const horaInicioInput = document.getElementById('hora-inicio');
+
+            // --- LÓGICA DE HORARIOS CORREGIDA ---
+            let ultimaHoraBase = "6:00"; // Siempre partimos de que el HTML tiene base 6:00
+
+            function actualizarHorarios() {
+                const nuevaHora = horaInicioInput.value;
+                const partsNueva = nuevaHora.split(':');
+                const partsBase = ultimaHoraBase.split(':');
+
+                if (partsNueva.length !== 2 || partsBase.length !== 2) return;
+
+                const minNuevos = parseInt(partsNueva[0]) * 60 + parseInt(partsNueva[1]);
+                const minBase = parseInt(partsBase[0]) * 60 + parseInt(partsBase[1]);
+                
+                if (isNaN(minNuevos) || isNaN(minBase)) return;
+
+                const diferencia = minNuevos - minBase;
+
+                document.querySelectorAll('.time-input').forEach(input => {
+                    const tParts = input.value.split(':');
+                    if (tParts.length === 2) {
+                        const totalMinutos = parseInt(tParts[0]) * 60 + parseInt(tParts[1]) + diferencia;
+                        const h = Math.floor(totalMinutos / 60);
+                        const m = totalMinutos % 60;
+                        input.value = `${h}:${m < 10 ? '0' + m : m}`;
+                    }
+                });
+
+                ultimaHoraBase = nuevaHora; // Actualizamos la base para el siguiente cambio
+            }
+
+            horaInicioInput.addEventListener('change', actualizarHorarios);
+            // Ejecutar al cargar si el valor es distinto de 6:00
+            if(horaInicioInput.value !== "6:00") actualizarHorarios();
+            // ------------------------------------
+
+            function actualizarFechas() {
+                const diaDeseado = masterInput.value.toLowerCase().trim();
+                if (!diasMap.hasOwnProperty(diaDeseado)) return;
+
+                document.querySelectorAll('.fecha-referencia').forEach(ref => {
+                    const rango = ref.value.toLowerCase();
+                    const idSufijo = ref.id.replace('fecha-', '');
+                    const inputHoy = document.getElementById(`hoy-${idSufijo}`);
+                    
+                    const matchDia = rango.match(/(\d+)/);
+                    const matchMes = rango.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/);
+
+                    if (matchDia && matchMes && inputHoy) {
+                        const diaLunes = parseInt(matchDia[1]);
+                        const fechaBase = new Date(2026, mesesMap[matchMes[1]], diaLunes);
+                        let fechaFinal = new Date(fechaBase);
+                        fechaFinal.setDate(fechaBase.getDate() + diasMap[diaDeseado]);
+                        
+                        const opciones = { day: 'numeric', month: 'long' };
+                        const format = fechaFinal.toLocaleDateString('es-ES', opciones);
+                        inputHoy.value = format;
+                        localStorage.setItem(inputHoy.id, format);
+                    }
+                });
+            }
+
+            masterInput.addEventListener('change', actualizarFechas);
+            if(masterInput.value) actualizarFechas();
+
             const inputs = document.querySelectorAll('.m-save');
-            const usados = {
-                ancianos: new Set(),
-                ancianos_y_siervos: new Set(),
-                varones: new Set(),
-                mujeres: new Set(),
-                hombres: new Set()
-            };
+            const usados = { ancianos: new Set(), ancianos_y_siervos: new Set(), varones: new Set(), mujeres: new Set(), hombres: new Set() };
 
             inputs.forEach(input => {
                 const savedValue = localStorage.getItem(input.id);
                 if (savedValue) {
                     input.value = savedValue;
                 } else {
-                    if (input.id.startsWith('pres-')) {
-                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    }
+                    if (input.id.startsWith('pres-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
                     else if (input.id.startsWith('ora1-')) {
                         const semanaId = input.id.split('-')[1];
                         const inputPresidente = document.getElementById(`pres-${semanaId}`);
-                        if (inputPresidente) {
-                            input.value = inputPresidente.value;
-                        } else {
-                            input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                        }
+                        input.value = inputPresidente ? inputPresidente.value : obtenerAleatorio(listas.ancianos, usados.ancianos);
                     }
-                    else if (input.id.startsWith('ora2-')) {
-                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    }
+                    else if (input.id.startsWith('ora2-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
                     else if (input.id.startsWith('t-')) {
-                        if (input.id.endsWith('-3.')) { 
-                            input.value = obtenerAleatorio(listas.varones, usados.varones);
-                        } else {
-                            input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
-                        }
+                        if (input.id.endsWith('-3.')) input.value = obtenerAleatorio(listas.varones, usados.varones);
+                        else input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
                     }
                     else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
-                        const usarMujer = Math.random() < 0.8;
-                        if (usarMujer && listas.mujeres.length > 0) {
-                            input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
-                        } else {
-                            input.value = obtenerAleatorio(listas.hombres, usados.hombres);
-                        }
+                        if (Math.random() < 0.8 && listas.mujeres.length > 0) input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
+                        else input.value = obtenerAleatorio(listas.hombres, usados.hombres);
                     }
-                    else if (input.id.startsWith('v-')) {
-                        input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    }
-                    else if (input.id.startsWith('lec-')) {
-                        input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
-                    }
+                    else if (input.id.startsWith('discurso-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
+                    else if (input.id.startsWith('v-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                    else if (input.id.startsWith('lec-')) input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
 
-                    if (input.value) {
-                        localStorage.setItem(input.id, input.value);
-                    }
+                    if (input.value) localStorage.setItem(input.id, input.value);
                 }
-
-                input.addEventListener('input', (e) => {
-                    localStorage.setItem(e.target.id, e.target.value);
-                });
+                input.addEventListener('input', (e) => localStorage.setItem(e.target.id, e.target.value));
             });
         });
 
@@ -353,18 +384,11 @@
             const overlay = document.createElement('div');
             overlay.id = "custom-loading-overlay";
             overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
-            
             const loader = document.createElement('div');
             loader.style.cssText = "border: 8px solid #f3f3f3; border-top: 8px solid #d12027; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px;";
-            
             const texto = document.createElement('p');
             texto.style.cssText = "font-weight: bold; color: #333;";
             texto.innerText = "Este proceso demora en cargar, tenga paciencia";
-
-            const style = document.createElement('style');
-            style.innerHTML = "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
-            
-            document.head.appendChild(style);
             overlay.appendChild(loader);
             overlay.appendChild(texto);
             document.body.appendChild(overlay);
@@ -373,9 +397,7 @@
         window.addEventListener("pageshow", function(event) {
             if (event.persisted) {
                 const overlay = document.getElementById("custom-loading-overlay");
-                if (overlay) {
-                    overlay.remove();
-                }
+                if (overlay) overlay.remove();
             }
         });
     </script>
