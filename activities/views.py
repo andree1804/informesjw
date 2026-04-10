@@ -6,6 +6,9 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from core.models import Person
 from django.contrib import admin  # <-- ESTA ES LA QUE ACTIVA EL SIDEBAR
+from django.core.cache import cache  # Importación necesaria
+import hashlib
+from concurrent.futures import ThreadPoolExecutor # Necesario para la mejora de velocidad
 
 # =====================================================================
 # VISTA 1: LISTADO DE REVISTAS
@@ -62,171 +65,150 @@ def guia_mes_completo_view(request):
     if not url_revista:
         return render(request, "admin/error.html", {"error": "No se proporcionó la URL de la revista."})
 
-    base_url = "https://www.jw.org"
-    reuniones_mes = []
+    # --- FUNCIONALIDAD DE CACHÉ ---
+    cache_key = f"guia_mes_{hashlib.md5(url_revista.encode()).hexdigest()}"
+    cached_data = cache.get(cache_key)
+    
+    if cached_data:
+        reuniones_mes = cached_data['reuniones_mes']
+        periodo = cached_data['periodo']
+    else:
+        base_url = "https://www.jw.org"
+        reuniones_mes = []
 
-    partes = url_revista.strip('/').split('/')
-    ultimo_segmento = partes[-1]
-    periodo = ultimo_segmento.replace('-mwb', '')
+        partes = url_revista.strip('/').split('/')
+        ultimo_segmento = partes[-1]
+        periodo = ultimo_segmento.replace('-mwb', '')
 
-    # --- FUNCIÓN PARA OBTENER EL VIERNES DE LA SEMANA ---
-    def obtener_viernes_fecha(rango_texto):
-        meses = {
-            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
-            'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-        }
-        try:
-            # Convertimos a minúsculas para evitar fallos de coincidencia
-            rango_texto = rango_texto.lower()
-            
-            # Buscamos el primer número y el primer mes que aparezca en la cadena
-            match_dia = re.search(r'(\d+)', rango_texto)
-            # Buscamos el mes que está inmediatamente después del primer "de" o al final
-            match_mes = re.search(r'de\s+([a-z]+)', rango_texto)
-            
-            if match_dia and match_mes:
-                dia_lunes = int(match_dia.group(1))
-                mes_nombre_inicio = match_mes.group(1)
-                mes_num = meses.get(mes_nombre_inicio, 1)
-                
-                anio = datetime.now().year # Año actual según tu entorno
-                
-                # Creamos la fecha del lunes de esa semana
-                fecha_lunes = datetime(anio, mes_num, dia_lunes)
-                
-                # Sumamos 4 días para llegar al viernes
-                fecha_viernes = fecha_lunes + timedelta(days=4)
-                
-                # Para el nombre del mes de salida, verificamos si el viernes cayó en un mes distinto
-                # (Caso: 27 de julio -> viernes 31 de julio | Caso: 29 de diciembre -> viernes 2 de enero)
-                nombre_mes_final = [k for k, v in meses.items() if v == fecha_viernes.month][0]
-                
-                return f"{fecha_viernes.day} de {nombre_mes_final}"
-        except Exception as e:
-            print(f"Error en fecha: {e}")
-        return ""
-
-    try:
-        res_indice = requests.get(url_revista, timeout=20)
-        res_indice.raise_for_status()
-        soup_indice = BeautifulSoup(res_indice.text, "html.parser")
-        
-        toc = soup_indice.find("div", class_="toc cms-clearfix")
-        if not toc:
-            return render(request, "admin/error.html", {"error": "No se encontró el índice de semanas."})
-
-        links_semanas = []
-        for a in toc.find_all("a", href=True):
-            if "mwb" in a['href'] and "reuniones" not in a['href']:
-                full_url = base_url + a['href'] if a['href'].startswith('/') else a['href']
-                if full_url not in links_semanas:
-                    links_semanas.append(full_url)
-
-        for url_s in links_semanas:
-            res_s = requests.get(url_s, timeout=30)
-            soup_s = BeautifulSoup(res_s.text, "html.parser")
-            article = soup_s.find("article", id="article")
-            if not article: continue
-
-            fecha = article.find("h1").get_text(strip=True) if article.find("h1") else "Fecha"
-            texto = article.find("h2").get_text(strip=True) if article.find("h2") else ""
-            
-            # Calcular el viernes basado en la fecha del h1
-            viernes_calculado = obtener_viernes_fecha(fecha)
-
-            reloj_reunion = datetime.strptime("18:05", "%H:%M")
-
-            programa = {
-                "inicio": {"cancion": "", "intro": ""}, 
-                "tesoros": [], 
-                "maestros": [], 
-                "vida_cancion": "", 
-                "vida": [], 
-                "conclusion": {"cancion": "", "intro": "", "hora": ""}
+        # --- FUNCIÓN PARA OBTENER EL VIERNES DE LA SEMANA ---
+        def obtener_viernes_fecha(rango_texto):
+            meses = {
+                'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+                'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
             }
+            try:
+                rango_texto = rango_texto.lower()
+                match_dia = re.search(r'(\d+)', rango_texto)
+                match_mes = re.search(r'de\s+([a-z]+)', rango_texto)
+                if match_dia and match_mes:
+                    dia_lunes = int(match_dia.group(1))
+                    mes_nombre_inicio = match_mes.group(1)
+                    mes_num = meses.get(mes_nombre_inicio, 1)
+                    anio = datetime.now().year 
+                    fecha_lunes = datetime(anio, mes_num, dia_lunes)
+                    fecha_viernes = fecha_lunes + timedelta(days=4)
+                    nombre_mes_final = [k for k, v in meses.items() if v == fecha_viernes.month][0]
+                    return f"{fecha_viernes.day} de {nombre_mes_final}"
+            except Exception as e:
+                print(f"Error en fecha: {e}")
+            return ""
 
-            def procesar_horario(minutos_str):
-                nonlocal reloj_reunion
-                hora_formateada = reloj_reunion.strftime("%I:%M").lstrip("0")
-                try:
-                    minutos = int(minutos_str) + 1 if minutos_str else 0
-                except ValueError:
-                    minutos = 0
-                reloj_reunion += timedelta(minutes=minutos)
-                return hora_formateada
+        # --- FUNCIÓN ATÓMICA PARA SCRAPING DE UNA SEMANA (MEJORA) ---
+        def extraer_datos_semana(url_s):
+            try:
+                res_s = requests.get(url_s, timeout=15)
+                soup_s = BeautifulSoup(res_s.text, "html.parser")
+                article = soup_s.find("article", id="article")
+                if not article: return None
 
-            for h3 in article.find_all("h3"):
-                texto_h3 = h3.get_text(" ", strip=True)
+                fecha_h1 = article.find("h1").get_text(strip=True) if article.find("h1") else "Fecha"
+                texto_h2 = article.find("h2").get_text(strip=True) if article.find("h2") else ""
+                viernes_calc = obtener_viernes_fecha(fecha_h1)
                 
-                if "Canción" in texto_h3 and not programa["inicio"]["cancion"] and "introducción" in texto_h3.lower():
-                    partes = texto_h3.split('|')
-                    programa["inicio"] = {
-                        "cancion": partes[0].strip(),
-                        "intro": partes[1].strip() if len(partes) > 1 else "Palabras de introducción"
-                    }
-                    continue
+                # Reloj interno por cada hilo de semana
+                reloj_local = datetime.strptime("18:05", "%H:%M")
 
-                if "Canción" in texto_h3 and "introducción" not in texto_h3.lower() and "conclusión" not in texto_h3.lower():
-                    hora_actual = reloj_reunion.strftime("%I:%M").lstrip("0")
-                    programa["vida_cancion"] = {"cantico": texto_h3, "hora": hora_actual}
-                    reloj_reunion += timedelta(minutes=5)
-                    continue
+                prog = {
+                    "inicio": {"cancion": "", "intro": ""}, 
+                    "tesoros": [], "maestros": [], "vida_cancion": "", 
+                    "vida": [], "conclusion": {"cancion": "", "intro": "", "hora": ""}
+                }
 
-                if "conclusión" in texto_h3.lower():
-                    partes = texto_h3.split('|')
-                    programa["conclusion"] = {
-                        "cancion": partes[0].strip(),
-                        "intro": partes[1].strip() if len(partes) > 1 else "Palabras de conclusión",
-                        "hora": procesar_horario("0") 
-                    }
-                    continue
-
-                match = re.search(r'^(\d+\.)\s*(.*)', texto_h3)
-                if match:
-                    numero_str = match.group(1)
-                    titulo_completo = match.group(2)
-                    extra_info = ""
-                    div_detalle = h3.find_next_sibling("div")
-                    if div_detalle:
-                        extra_info = div_detalle.get_text(" ", strip=True)
-
-                    tiempo_match = re.search(r'\((\d+)\s*mins?\.?\)', texto_h3 + " " + extra_info)
-                    if tiempo_match:
-                        tiempo = tiempo_match.group(1)
-                    else:
-                        segundo_intento = re.search(r'\((\d+)\)', texto_h3)
-                        tiempo = segundo_intento.group(1) if segundo_intento else "5"
-
-                    titulo_limpio = titulo_completo.replace(f"({tiempo})", "").strip()
-                    descripcion = extra_info.replace(f"({tiempo})", "").replace("min.", "").strip()
-
-                    data = {"numero": numero_str, "titulo": titulo_limpio, "tiempo": tiempo, "descripcion": descripcion}
-
+                def proc_h(min_str, r_reunion):
+                    h_form = r_reunion.strftime("%I:%M").lstrip("0")
                     try:
-                        n = int(numero_str.replace(".", ""))
-                        if n <= 3:
-                            data["hora"] = procesar_horario(tiempo)
-                            programa["tesoros"].append(data)
-                        elif 4 <= n <= 6:
-                            data["hora"] = procesar_horario(tiempo)
-                            programa["maestros"].append(data)
-                        else:
-                            data["hora"] = procesar_horario(int(tiempo)-1) 
-                            programa["vida"].append(data)
-                    except ValueError:
-                        continue
+                        m = int(min_str) + 1 if min_str else 0
+                    except: m = 0
+                    return h_form, r_reunion + timedelta(minutes=m)
 
-            reuniones_mes.append({
-                "id": re.sub(r'\W+', '', fecha),
-                "fecha": fecha,
-                "viernes": viernes_calculado,  # <--- AGREGADO
-                "texto": texto,
-                "programa": programa
-            })
+                for h3 in article.find_all("h3"):
+                    t_h3 = h3.get_text(" ", strip=True)
+                    if "Canción" in t_h3 and not prog["inicio"]["cancion"] and "introducción" in t_h3.lower():
+                        partes_t = t_h3.split('|')
+                        prog["inicio"] = {"cancion": partes_t[0].strip(), "intro": partes_t[1].strip() if len(partes_t)>1 else "Palabras de introducción"}
+                    elif "Canción" in t_h3 and "introducción" not in t_h3.lower() and "conclusión" not in t_h3.lower():
+                        prog["vida_cancion"] = {"cantico": t_h3, "hora": reloj_local.strftime("%I:%M").lstrip("0")}
+                        reloj_local += timedelta(minutes=5)
+                    elif "conclusión" in t_h3.lower():
+                        partes_t = t_h3.split('|')
+                        h_f, _ = proc_h("0", reloj_local)
+                        prog["conclusion"] = {"cancion": partes_t[0].strip(), "intro": partes_t[1].strip() if len(partes_t)>1 else "Palabras de conclusión", "hora": h_f}
+                    else:
+                        match_t = re.search(r'^(\d+\.)\s*(.*)', t_h3)
+                        if match_t:
+                            num_s = match_t.group(1)
+                            div_det = h3.find_next_sibling("div")
+                            e_info = div_det.get_text(" ", strip=True) if div_det else ""
+                            t_m = re.search(r'\((\d+)\s*mins?\.?\)', t_h3 + " " + e_info)
+                            tie = t_m.group(1) if t_m else "5"
+                            
+                            dat = {"numero": num_s, "titulo": match_t.group(2).replace(f"({tie})", "").strip(), "tiempo": tie, "descripcion": e_info.replace(f"({tie})", "").replace("min.", "").strip()}
+                            
+                            n = int(num_s.replace(".", ""))
+                            if n <= 3:
+                                dat["hora"], reloj_local = proc_h(tie, reloj_local)
+                                prog["tesoros"].append(dat)
+                            elif 4 <= n <= 6:
+                                dat["hora"], reloj_local = proc_h(tie, reloj_local)
+                                prog["maestros"].append(dat)
+                            else:
+                                dat["hora"], reloj_local = proc_h(int(tie)-1, reloj_local)
+                                prog["vida"].append(dat)
 
-    except Exception as e:
-        return render(request, "admin/error.html", {"error": f"Error procesando el mes: {str(e)}"})
+                return {
+                    "id": re.sub(r'\W+', '', fecha_h1),
+                    "fecha": fecha_h1,
+                    "viernes": viernes_calc,
+                    "texto": texto_h2,
+                    "programa": prog,
+                    "url_original": url_s # Para mantener el orden
+                }
+            except Exception as e:
+                print(f"Error en semana {url_s}: {e}")
+                return None
 
+        try:
+            res_indice = requests.get(url_revista, timeout=20)
+            res_indice.raise_for_status()
+            soup_indice = BeautifulSoup(res_indice.text, "html.parser")
+            
+            toc = soup_indice.find("div", class_="toc cms-clearfix")
+            if not toc:
+                return render(request, "admin/error.html", {"error": "No se encontró el índice de semanas."})
+
+            links_semanas = []
+            for a in toc.find_all("a", href=True):
+                if "mwb" in a['href'] and "reuniones" not in a['href']:
+                    full_url = base_url + a['href'] if a['href'].startswith('/') else a['href']
+                    if full_url not in links_semanas:
+                        links_semanas.append(full_url)
+
+            # --- EJECUCIÓN EN PARALELO ---
+            # Usamos máximo 5 hilos (un mes suele tener 4 o 5 semanas)
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                resultados_brutos = list(executor.map(extraer_datos_semana, links_semanas))
+
+            # Limpiamos resultados nulos y ordenamos según la lista de links original
+            reuniones_mes = [r for r in resultados_brutos if r is not None]
+            reuniones_mes.sort(key=lambda x: links_semanas.index(x['url_original']))
+
+            # Guardamos en caché
+            cache.set(cache_key, {'reuniones_mes': reuniones_mes, 'periodo': periodo}, 86400)
+
+        except Exception as e:
+            return render(request, "admin/error.html", {"error": f"Error procesando el mes: {str(e)}"})
+
+    # --- LISTAS DE PERSONAS (Siempre actualizadas desde DB) ---
     def obtener_lista_nombres_completos(queryset):
         tuplas = queryset.values_list('names', 'paternal_surname').distinct()
         return [" ".join([texto for texto in tupla if texto]) for tupla in tuplas]
