@@ -17,39 +17,57 @@ from concurrent.futures import ThreadPoolExecutor # Necesario para la mejora de 
 def guia_actividades_view(request):
     url_base_jw = "https://www.jw.org"
     url_principal = f"{url_base_jw}/es/biblioteca/guia-actividades-reunion-testigos-jehova/"
-
+    
+    # Usaremos una sola clave de caché
+    cache_key = "guia_actividades_final_v5"
+    html_final = cache.get(cache_key)
+    
     context = admin.site.each_context(request)
 
-    try:
-        response = requests.get(url_principal, timeout=30)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-    except Exception as e:
-        context.update({"content": f"Error: {e}"})
+    # 1. Si la caché existe, la enviamos DE INMEDIATO (0.1 segundos)
+    if html_final:
+        context.update({"content": html_final, "title": "Guía de Actividades"})
         return render(request, "admin/guia_actividades.html", context)
 
-    h2_target = soup.find("h2", string=lambda t: t and "GUÍA DE ACTIVIDADES" in t.upper())
-    
-    html_final = ""
-    if h2_target:
-        for sibling in h2_target.find_next_siblings():
-            if sibling.name == "h2": break
-            
-            divs = sibling.find_all("div", class_="publicationDesc")
-            for div in divs:
-                link_jw = div.find("a")["href"] if div.find("a") else ""
-                if link_jw.startswith('/'): 
-                    link_jw = url_base_jw + link_jw
-                
-                if link_jw:
-                    new_link = f"/admin/guia-mes-completo/?url_jw={link_jw}"
-                    if div.find("a"):
-                        div.find("a")["href"] = new_link
-                
-                html_final += div.prettify()
+    # 2. Si NO hay caché (solo pasará la primera vez o cada 6 horas), hacemos el scraping
+    try:
+        # Headers para que parezca un navegador y JW no nos ponga en "cola" de espera
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'es-ES,es;q=0.9',
+        }
+        
+        response = requests.get(url_principal, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        h2_target = soup.find("h2", string=lambda t: t and "GUÍA DE ACTIVIDADES" in t.upper())
+        
+        temp_html = ""
+        if h2_target:
+            for sibling in h2_target.find_next_siblings():
+                if sibling.name == "h2": break
+                divs = sibling.find_all("div", class_="publicationDesc")
+                for div in divs:
+                    a_tag = div.find("a")
+                    if a_tag and a_tag.has_attr("href"):
+                        link_jw = a_tag["href"]
+                        if link_jw.startswith('/'): 
+                            link_jw = url_base_jw + link_jw
+                        a_tag["href"] = f"/admin/guia-mes-completo/?url_jw={link_jw}"
+                    temp_html += div.prettify()
+        
+        html_final = temp_html or "<p>No hay datos</p>"
+        
+        # 3. Guardamos en caché por 24 HORAS (86400 segundos)
+        # Esto significa que solo verás la demora de 15s una vez cada 24 horas.
+        cache.set(cache_key, html_final, 86400)
+
+    except Exception as e:
+        html_final = f"<p>Error cargando datos: {e}</p>"
 
     context.update({
-        "content": html_final or "<p>No hay datos</p>",
+        "content": html_final,
         "title": "Guía de Actividades"
     })
 
