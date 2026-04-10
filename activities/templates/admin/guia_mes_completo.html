@@ -50,7 +50,7 @@
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
         .bg-vida { background-color: #942911 !important; }
-        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11pt; background: #fffdf2; padding: 2px; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 10.5pt; background: #fffdf2; padding: 2px; }
         .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
         .titulo-punto { font-weight: bold; display: block; }
         .seniority { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
@@ -244,17 +244,19 @@
                 </div>
                 <div>
                     <input class="m-save" id="v-{{ r.id }}-{{ forloop.counter }}" type="text" placeholder="Asignado...">
+                    {# Si es el último, podrías mostrar algo diferente o un mensaje extra #}
+                    {% if forloop.last %}
+                        <div class="row">
+                            <div style="margin-top: 5px;"><strong>Lector: </strong></div>
+                            <div>
+                                <input class="m-save" id="lec-{{ r.id }}" type="text" style="margin-top: 4px;" placeholder="Lector...">
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
                 <input type="text" class="time-input" value="{{ p.hora }}">
             </div>
             {% endfor %}
-            <div class="row">
-                <div></div>
-                <div>
-                    <strong>Lector: </strong>
-                    <input class="m-save" id="lec-{{ r.id }}" type="text" style="width: 70%; float: right;" placeholder="Asignado...">
-                </div>
-            </div> 
 
             <div class="bar" style="background-color: #333 !important;">CONCLUSIÓN</div>
             <div class="row">
