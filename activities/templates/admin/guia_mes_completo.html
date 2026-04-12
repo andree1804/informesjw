@@ -436,6 +436,7 @@
 
     function imprimirTarjetas() {
         const container = document.getElementById('print-only-container');
+        if (!container) return;
         container.innerHTML = ""; 
 
         const filas = document.querySelectorAll('.semana-bloque .row');
@@ -445,6 +446,7 @@
             
             if (tituloElement) {
                 const titulo = tituloElement.innerText.trim();
+                // Limpieza robusta del número de intervención
                 const num = parseInt(titulo.split(' ')[0].replace('.', ''));
                 
                 // --- FILTRO: Solo tarjetas de "Seamos mejores maestros" (puntos 4, 5, 6) ---
@@ -455,8 +457,11 @@
                     const inputsFila = fila.querySelectorAll('input[type="text"]:not(.time-input)');
                     const nombrePublicador = inputsFila.length > 0 ? inputsFila[0].value : "";
                     const nombreAyudante = inputsFila.length > 1 ? inputsFila[1].value : "";
-                    const fecha = fila.closest('.semana-bloque').querySelector('.m-save')?.value || 
-                                  fila.closest('.semana-bloque').querySelector('.date')?.innerText.trim() || "";
+                    
+                    // Búsqueda segura de fecha
+                    const bloquePadre = fila.closest('.semana-bloque');
+                    const fecha = bloquePadre.querySelector('.m-save')?.value || 
+                                  bloquePadre.querySelector('.date')?.innerText.trim() || "";
 
                     let tiposDeTarjeta = [false]; 
                     if (nombreAyudante.trim() !== "") {
@@ -509,15 +514,21 @@
             }
         });
 
-        // --- ACTIVACIÓN DEL MODO IMPRESIÓN ---
+        // --- ACTIVACIÓN DEL MODO IMPRESIÓN (Optimizado para Móviles) ---
         document.body.classList.add('modo-tarjetas');
         
-        // Esperamos un pequeño instante para asegurar que el DOM esté listo
-        setTimeout(() => {
-            window.print();
-            // --- DESACTIVACIÓN AL TERMINAR ---
-            document.body.classList.remove('modo-tarjetas');
-        }, 100);
+        // Usamos requestAnimationFrame para asegurar que el navegador aplique los estilos CSS
+        // antes de abrir el diálogo de impresión.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                window.print();
+                
+                // Retraso para limpiar la clase solo después de que el usuario cierre el diálogo
+                setTimeout(() => {
+                    document.body.classList.remove('modo-tarjetas');
+                }, 500);
+            });
+        });
     }
 
 </script>
