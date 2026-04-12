@@ -37,7 +37,7 @@ def guia_actividades_view(request):
             'Accept-Language': 'es-ES,es;q=0.9',
         }
         
-        response = requests.get(url_principal, headers=headers, timeout=15)
+        response = requests.get(url_principal, headers=headers, timeout=25)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, "html.parser")
