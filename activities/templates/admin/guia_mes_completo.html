@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reunion VMC - {{ periodo }}</title>
-    
+
     <style id="critical-load-css">
         #loading-screen {
             position: fixed;
@@ -39,7 +39,7 @@
         /* ESTILOS DE PANTALLA */
         @page { size: A4; margin: 0.5cm !important; } 
 
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5pt; line-height: 1.3; color: #333; margin: 0; padding: 20px; background-color: #f0f2f5; }
         .semana-bloque { background: white; padding: 30px; margin: 0 auto 50px auto; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; }
         
         .header { display: flex; justify-content: space-between; border-bottom: 2.5px solid #222; padding-bottom: 2px; margin-bottom: 15px; }
@@ -50,7 +50,7 @@
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
         .bg-vida { background-color: #942911 !important; }
-        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 10.5pt; background: #fffdf2; padding: 2px; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11.5pt; background: #fffdf2; padding: 2px; }
         .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
         .titulo-punto { font-weight: bold; display: block; }
         .seniority { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
@@ -68,43 +68,34 @@
             .master-dia-container {grid-template-columns: 1fr !important; padding:  10px 10px !important;}
         }
 
-        @media print { 
+        @media print {
             @page { size: A4; margin: 0.5cm !important; }
             
-            .row { 
-                display: grid !important; 
-                grid-template-columns: 1fr 240px 65px !important; 
-                gap: 12px !important; 
-                /* Añadimos esto para asegurar que la fila no se estire de más en móviles */
-                width: 100% !important;
-            }
-            
+            .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; width: 100% !important; }
             .no-print { display: none !important; } 
             
-            body { 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                background: white; 
-                /* CRÍTICO PARA MÓVILES: Evita que el navegador reescale el contenido */
-                width: 210mm; 
-            } 
+            body { padding: 0 !important; margin: 0 !important; background: white; width: 210mm; } 
             
             #main-wrapper { opacity: 1 !important; }
             
-            .semana-bloque { 
-                box-shadow: none !important; 
-                border-radius: 0 !important; 
-                margin: 0 !important; 
-                padding: 0.5cm !important; 
-                width: 100% !important; 
-                max-width: 100% !important; 
-                box-sizing: border-box !important; 
-                page-break-after: always !important; 
-            }
-            
+            .semana-bloque { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0.5cm !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; page-break-after: always !important; }
             .semana-bloque:last-of-type { page-break-after: auto !important; }
+            
             input::placeholder { color: transparent !important; }
             input { border: none !important; background: transparent !important; }
+
+            /* --- AQUÍ ESTÁ LA MAGIA --- */
+            
+            /* Por defecto: Si NO es modo tarjetas, ocultamos solo el contenedor de tarjetas */
+            body:not(.modo-tarjetas) #print-only-container { display: none !important; }
+
+            /* Si es modo tarjetas: Ocultamos el programa principal y mostramos las tarjetas */
+            body.modo-tarjetas #main-wrapper { display: none !important; }
+            body.modo-tarjetas #print-only-container { 
+                display: block !important; width: 100%; column-count: 2; column-gap: 1.5cm; 
+            }
+            
+            .tarjeta-impresion { border: 1px solid #999; margin-bottom: 1cm; width: 100%; display: inline-block; break-inside: avoid; }
         }
 
         .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
@@ -141,6 +132,7 @@
         <div class="toolbar no-print">
             <button class="btn btn-back" onclick="window.history.back()">⬅</button>
             <button class="btn btn-print" onclick="window.print()">🖨️</button>
+            <button class="btn btn-print" onclick="imprimirTarjetas()" title="Imprimir tarjetas">📄</button>
             <button class="btn btn-clear" onclick="limpiarFormulario()">🗑️</button>
         </div>
 
@@ -210,7 +202,7 @@
                     <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
                     <span class="description">{{ p.descripcion }}</span>
                 </div>
-                {% if p.titulo == "Discurso" %}
+                {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion %}
                 <div>
                     <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
                 </div>
@@ -277,169 +269,258 @@
     </div>
 
 <script>
-        function quitarLoading() {
-            const loader = document.getElementById('loading-screen');
-            const wrapper = document.getElementById('main-wrapper');
-            if (loader) loader.style.setProperty('display', 'none', 'important');
-            if (wrapper) wrapper.style.opacity = '1';
+    function quitarLoading() {
+        const loader = document.getElementById('loading-screen');
+        const wrapper = document.getElementById('main-wrapper');
+        if (loader) loader.style.setProperty('display', 'none', 'important');
+        if (wrapper) wrapper.style.opacity = '1';
+    }
+    window.addEventListener('load', quitarLoading);
+    setTimeout(quitarLoading, 5000);
+
+    const listas = {
+        ancianos: {{ ancianos_list|safe|default:"[]" }},
+        ancianos_y_siervos: {{ ancianos_y_siervos_list|safe|default:"[]" }},
+        varones: {{ varones_list|safe|default:"[]" }},
+        mujeres: {{ mujeres_list|safe|default:"[]" }},
+        hombres: {{ hombres_list|safe|default:"[]" }}
+    };
+
+    function obtenerAleatorio(lista, registroUsados) {
+        if (!lista || lista.length === 0) return "";
+        let disponibles = lista.filter(nombre => !registroUsados.has(nombre));
+        if (disponibles.length === 0) {
+            registroUsados.clear();
+            disponibles = lista;
         }
-        window.addEventListener('load', quitarLoading);
-        setTimeout(quitarLoading, 5000);
+        const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
+        registroUsados.add(elegido);
+        return elegido;
+    }
 
-        const listas = {
-            ancianos: {{ ancianos_list|safe|default:"[]" }},
-            ancianos_y_siervos: {{ ancianos_y_siervos_list|safe|default:"[]" }},
-            varones: {{ varones_list|safe|default:"[]" }},
-            mujeres: {{ mujeres_list|safe|default:"[]" }},
-            hombres: {{ hombres_list|safe|default:"[]" }}
-        };
+    document.addEventListener('DOMContentLoaded', () => {
+        const mesesMap = { 'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5, 'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11 };
+        const diasMap = { 'lunes': 0, 'martes': 1, 'miercoles': 2, 'miércoles': 2, 'jueves': 3, 'viernes': 4, 'sabado': 5, 'sábado': 5, 'domingo': 6 };
+        const masterInput = document.getElementById('master-dia-control');
+        const horaInicioInput = document.getElementById('hora-inicio');
 
-        function obtenerAleatorio(lista, registroUsados) {
-            if (!lista || lista.length === 0) return "";
-            let disponibles = lista.filter(nombre => !registroUsados.has(nombre));
-            if (disponibles.length === 0) {
-                registroUsados.clear();
-                disponibles = lista;
-            }
-            const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
-            registroUsados.add(elegido);
-            return elegido;
-        }
+        // --- LÓGICA DE HORARIOS CORREGIDA ---
+        let ultimaHoraBase = "6:00"; // Siempre partimos de que el HTML tiene base 6:00
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const mesesMap = { 'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5, 'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11 };
-            const diasMap = { 'lunes': 0, 'martes': 1, 'miercoles': 2, 'miércoles': 2, 'jueves': 3, 'viernes': 4, 'sabado': 5, 'sábado': 5, 'domingo': 6 };
-            const masterInput = document.getElementById('master-dia-control');
-            const horaInicioInput = document.getElementById('hora-inicio');
+        function actualizarHorarios() {
+            const nuevaHora = horaInicioInput.value;
+            const partsNueva = nuevaHora.split(':');
+            const partsBase = ultimaHoraBase.split(':');
 
-            // --- LÓGICA DE HORARIOS CORREGIDA ---
-            let ultimaHoraBase = "6:00"; // Siempre partimos de que el HTML tiene base 6:00
+            if (partsNueva.length !== 2 || partsBase.length !== 2) return;
 
-            function actualizarHorarios() {
-                const nuevaHora = horaInicioInput.value;
-                const partsNueva = nuevaHora.split(':');
-                const partsBase = ultimaHoraBase.split(':');
+            const minNuevos = parseInt(partsNueva[0]) * 60 + parseInt(partsNueva[1]);
+            const minBase = parseInt(partsBase[0]) * 60 + parseInt(partsBase[1]);
+            
+            if (isNaN(minNuevos) || isNaN(minBase)) return;
 
-                if (partsNueva.length !== 2 || partsBase.length !== 2) return;
+            const diferencia = minNuevos - minBase;
 
-                const minNuevos = parseInt(partsNueva[0]) * 60 + parseInt(partsNueva[1]);
-                const minBase = parseInt(partsBase[0]) * 60 + parseInt(partsBase[1]);
-                
-                if (isNaN(minNuevos) || isNaN(minBase)) return;
-
-                const diferencia = minNuevos - minBase;
-
-                document.querySelectorAll('.time-input').forEach(input => {
-                    const tParts = input.value.split(':');
-                    if (tParts.length === 2) {
-                        const totalMinutos = parseInt(tParts[0]) * 60 + parseInt(tParts[1]) + diferencia;
-                        const h = Math.floor(totalMinutos / 60);
-                        const m = totalMinutos % 60;
-                        input.value = `${h}:${m < 10 ? '0' + m : m}`;
-                    }
-                });
-
-                ultimaHoraBase = nuevaHora; // Actualizamos la base para el siguiente cambio
-            }
-
-            horaInicioInput.addEventListener('change', actualizarHorarios);
-            // Ejecutar al cargar si el valor es distinto de 6:00
-            if(horaInicioInput.value !== "6:00") actualizarHorarios();
-            // ------------------------------------
-
-            function actualizarFechas() {
-                const diaDeseado = masterInput.value.toLowerCase().trim();
-                if (!diasMap.hasOwnProperty(diaDeseado)) return;
-
-                document.querySelectorAll('.fecha-referencia').forEach(ref => {
-                    const rango = ref.value.toLowerCase();
-                    const idSufijo = ref.id.replace('fecha-', '');
-                    const inputHoy = document.getElementById(`hoy-${idSufijo}`);
-                    
-                    const matchDia = rango.match(/(\d+)/);
-                    const matchMes = rango.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/);
-
-                    if (matchDia && matchMes && inputHoy) {
-                        const diaLunes = parseInt(matchDia[1]);
-                        const fechaBase = new Date(2026, mesesMap[matchMes[1]], diaLunes);
-                        let fechaFinal = new Date(fechaBase);
-                        fechaFinal.setDate(fechaBase.getDate() + diasMap[diaDeseado]);
-                        
-                        const opciones = { day: 'numeric', month: 'long' };
-                        const format = fechaFinal.toLocaleDateString('es-ES', opciones);
-                        inputHoy.value = format;
-                        localStorage.setItem(inputHoy.id, format);
-                    }
-                });
-            }
-
-            masterInput.addEventListener('change', actualizarFechas);
-            if(masterInput.value) actualizarFechas();
-
-            const inputs = document.querySelectorAll('.m-save');
-            const usados = { ancianos: new Set(), ancianos_y_siervos: new Set(), varones: new Set(), mujeres: new Set(), hombres: new Set() };
-
-            inputs.forEach(input => {
-                const savedValue = localStorage.getItem(input.id);
-                if (savedValue) {
-                    input.value = savedValue;
-                } else {
-                    if (input.id.startsWith('pres-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    else if (input.id.startsWith('ora1-')) {
-                        const semanaId = input.id.split('-')[1];
-                        const inputPresidente = document.getElementById(`pres-${semanaId}`);
-                        input.value = inputPresidente ? inputPresidente.value : obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    }
-                    else if (input.id.startsWith('ora2-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
-                    else if (input.id.startsWith('t-')) {
-                        if (input.id.endsWith('-3.')) input.value = obtenerAleatorio(listas.varones, usados.varones);
-                        else input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
-                    }
-                    else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
-                        if (Math.random() < 0.8 && listas.mujeres.length > 0) input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
-                        else input.value = obtenerAleatorio(listas.hombres, usados.hombres);
-                    }
-                    else if (input.id.startsWith('discurso-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
-                    else if (input.id.startsWith('v-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
-                    else if (input.id.startsWith('lec-')) input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
-
-                    if (input.value) localStorage.setItem(input.id, input.value);
+            document.querySelectorAll('.time-input').forEach(input => {
+                const tParts = input.value.split(':');
+                if (tParts.length === 2) {
+                    const totalMinutos = parseInt(tParts[0]) * 60 + parseInt(tParts[1]) + diferencia;
+                    const h = Math.floor(totalMinutos / 60);
+                    const m = totalMinutos % 60;
+                    input.value = `${h}:${m < 10 ? '0' + m : m}`;
                 }
-                input.addEventListener('input', (e) => localStorage.setItem(e.target.id, e.target.value));
             });
-        });
 
-        function limpiarFormulario() {
-            if (confirm("¿Borrar todos los nombres?")) {
-                const inputs = document.querySelectorAll('.m-save');
-                inputs.forEach(input => {
-                    localStorage.removeItem(input.id);
-                    input.value = "";
-                });
-            }
+            ultimaHoraBase = nuevaHora; // Actualizamos la base para el siguiente cambio
         }
 
-        window.addEventListener("beforeunload", function() {
-            const overlay = document.createElement('div');
-            overlay.id = "custom-loading-overlay";
-            overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
-            const loader = document.createElement('div');
-            loader.style.cssText = "border: 8px solid #f3f3f3; border-top: 8px solid #d12027; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px;";
-            const texto = document.createElement('p');
-            texto.style.cssText = "font-weight: bold; color: #333;";
-            texto.innerText = "Este proceso demora en cargar, tenga paciencia";
-            overlay.appendChild(loader);
-            overlay.appendChild(texto);
-            document.body.appendChild(overlay);
+        horaInicioInput.addEventListener('change', actualizarHorarios);
+        // Ejecutar al cargar si el valor es distinto de 6:00
+        if(horaInicioInput.value !== "6:00") actualizarHorarios();
+        // ------------------------------------
+
+        function actualizarFechas() {
+            const diaDeseado = masterInput.value.toLowerCase().trim();
+            if (!diasMap.hasOwnProperty(diaDeseado)) return;
+
+            document.querySelectorAll('.fecha-referencia').forEach(ref => {
+                const rango = ref.value.toLowerCase();
+                const idSufijo = ref.id.replace('fecha-', '');
+                const inputHoy = document.getElementById(`hoy-${idSufijo}`);
+                
+                const matchDia = rango.match(/(\d+)/);
+                const matchMes = rango.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/);
+
+                if (matchDia && matchMes && inputHoy) {
+                    const diaLunes = parseInt(matchDia[1]);
+                    const fechaBase = new Date(2026, mesesMap[matchMes[1]], diaLunes);
+                    let fechaFinal = new Date(fechaBase);
+                    fechaFinal.setDate(fechaBase.getDate() + diasMap[diaDeseado]);
+                    
+                    const opciones = { day: 'numeric', month: 'long' };
+                    const format = fechaFinal.toLocaleDateString('es-ES', opciones);
+                    inputHoy.value = format;
+                    localStorage.setItem(inputHoy.id, format);
+                }
+            });
+        }
+
+        masterInput.addEventListener('change', actualizarFechas);
+        if(masterInput.value) actualizarFechas();
+
+        const inputs = document.querySelectorAll('.m-save');
+        const usados = { ancianos: new Set(), ancianos_y_siervos: new Set(), varones: new Set(), mujeres: new Set(), hombres: new Set() };
+
+        inputs.forEach(input => {
+            const savedValue = localStorage.getItem(input.id);
+            if (savedValue) {
+                input.value = savedValue;
+            } else {
+                if (input.id.startsWith('pres-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                else if (input.id.startsWith('ora1-')) {
+                    const semanaId = input.id.split('-')[1];
+                    const inputPresidente = document.getElementById(`pres-${semanaId}`);
+                    input.value = inputPresidente ? inputPresidente.value : obtenerAleatorio(listas.ancianos, usados.ancianos);
+                }
+                else if (input.id.startsWith('ora2-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
+                else if (input.id.startsWith('t-')) {
+                    if (input.id.endsWith('-3.')) input.value = obtenerAleatorio(listas.varones, usados.varones);
+                    else input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
+                }
+                else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
+                    if (Math.random() < 0.8 && listas.mujeres.length > 0) input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
+                    else input.value = obtenerAleatorio(listas.hombres, usados.hombres);
+                }
+                else if (input.id.startsWith('discurso-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
+                else if (input.id.startsWith('v-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
+                else if (input.id.startsWith('lec-')) input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
+
+                if (input.value) localStorage.setItem(input.id, input.value);
+            }
+            input.addEventListener('input', (e) => localStorage.setItem(e.target.id, e.target.value));
         });
+    });
+
+    function limpiarFormulario() {
+        if (confirm("¿Borrar todos los nombres?")) {
+            const inputs = document.querySelectorAll('.m-save');
+            inputs.forEach(input => {
+                localStorage.removeItem(input.id);
+                input.value = "";
+            });
+        }
+    }
+
+    window.addEventListener("beforeunload", function() {
+        const overlay = document.createElement('div');
+        overlay.id = "custom-loading-overlay";
+        overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999999; font-family: Arial, sans-serif;";
+        const loader = document.createElement('div');
+        loader.style.cssText = "border: 8px solid #f3f3f3; border-top: 8px solid #d12027; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px;";
+        const texto = document.createElement('p');
+        texto.style.cssText = "font-weight: bold; color: #333;";
+        texto.innerText = "Este proceso demora en cargar, tenga paciencia";
+        overlay.appendChild(loader);
+        overlay.appendChild(texto);
+        document.body.appendChild(overlay);
+    });
 
 
-        window.addEventListener("pageshow", function(event) {
-            if (event.persisted) {
-                const overlay = document.getElementById("custom-loading-overlay");
-                if (overlay) overlay.remove();
+    window.addEventListener("pageshow", function(event) {
+        if (event.persisted) {
+            const overlay = document.getElementById("custom-loading-overlay");
+            if (overlay) overlay.remove();
+        }
+    });
+
+
+    function imprimirTarjetas() {
+        const container = document.getElementById('print-only-container');
+        container.innerHTML = ""; 
+
+        const filas = document.querySelectorAll('.semana-bloque .row');
+        
+        filas.forEach(fila => {
+            const tituloElement = fila.querySelector('.titulo-punto');
+            
+            if (tituloElement) {
+                const titulo = tituloElement.innerText.trim();
+                const num = parseInt(titulo.split(' ')[0].replace('.', ''));
+                
+                // --- FILTRO: Solo tarjetas de "Seamos mejores maestros" (puntos 4, 5, 6) ---
+                const esSeamosMejoresMaestros = (num >= 4 && num <= 6); 
+                
+                if (esSeamosMejoresMaestros) {
+                    // --- CAPTURA DE DATOS ---
+                    const inputsFila = fila.querySelectorAll('input[type="text"]:not(.time-input)');
+                    const nombrePublicador = inputsFila.length > 0 ? inputsFila[0].value : "";
+                    const nombreAyudante = inputsFila.length > 1 ? inputsFila[1].value : "";
+                    const fecha = fila.closest('.semana-bloque').querySelector('.m-save')?.value || 
+                                  fila.closest('.semana-bloque').querySelector('.date')?.innerText.trim() || "";
+
+                    let tiposDeTarjeta = [false]; 
+                    if (nombreAyudante.trim() !== "") {
+                        tiposDeTarjeta.push(true);
+                    }
+
+                    tiposDeTarjeta.forEach(esCopia => {
+                        const div = document.createElement('div');
+                        div.className = "tarjeta-impresion";
+                        
+                        div.style.cssText = "box-sizing: border-box; padding: 25px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #333;";
+                        
+                        div.innerHTML = `
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <h3 style="font-size: 11.5pt; margin: 0; text-transform: uppercase; font-weight: bold;">ASIGNACIÓN PARA LA REUNIÓN</h3>
+                                <h3 style="font-size: 11.5pt; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">VIDA Y MINISTERIO CRISTIANOS</h3>
+                                ${esCopia ? '<small style="color: #d12027; font-weight: bold; font-size: 8pt; text-transform: uppercase; display: block; margin-top: 2px;">COPIA: AYUDANTE</small>' : ''}
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 100px 1fr; gap: 8px 10px; margin-bottom: 15px;">
+                                <span style="font-weight: bold;">Nombre:</span> 
+                                <span>${nombrePublicador || "_______________________"}</span>
+                                
+                                <span style="font-weight: bold;">Ayudante:</span> 
+                                <span>${nombreAyudante || "_______________________"}</span>
+
+                                <span style="font-weight: bold;">Fecha:</span> 
+                                <span>${fecha}</span>
+
+                                <span style="font-weight: bold;">Intervención núm.:</span> 
+                                <span style="font-weight: bold;">${titulo}</span>
+                            </div>
+
+                            <div style="margin: 15px 0 10px 0;">
+                                <p style="font-weight: bold; margin-bottom: 5px;">Se presentará en:</p>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" checked style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala principal</td></tr>
+                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala Auxiliar 1</td></tr>
+                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala Auxiliar 2</td></tr>
+                                </table>
+                            </div>
+
+                            <div style="margin-top: 25px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 8.5pt; color: #555; text-align: justify; line-height: 1.3;">
+                                <em><strong>Nota al estudiante:</strong> En la Guía de actividades encontrará la información que necesita para su intervención. Repase también las indicaciones que se describen en las Instrucciones para la reunión Vida y Ministerio Cristianos (S-38).</em>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
             }
         });
-    </script>
+
+        // --- ACTIVACIÓN DEL MODO IMPRESIÓN ---
+        document.body.classList.add('modo-tarjetas');
+        
+        // Esperamos un pequeño instante para asegurar que el DOM esté listo
+        setTimeout(() => {
+            window.print();
+            // --- DESACTIVACIÓN AL TERMINAR ---
+            document.body.classList.remove('modo-tarjetas');
+        }, 100);
+    }
+
+</script>
+<div id="print-only-container" style="display: none;"></div>
 </body>
 </html>
