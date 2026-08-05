@@ -80,16 +80,16 @@
 		</fieldset>
 	    <!--<button type="submit" class="default" style="margin-top: 20px;">Guardar Reportes</button>-->
 	    <div class="submit-row">
-	    	{% if request.user.username == "admin" or request.user.first_name == group_name|lower %}	
+	    	{% if request.user.is_superuser or request.user.first_name == group_name|lower %}	
 	    		<input type="submit" class="default" value="Guardar informe">
 	    	{% endif %}
-	    	{% if request.user.username == "admin" %}
+	    	{% if request.user.is_superuser %}
 		    	{% if month and year %}
 				    <!--<a href="{% url 'admin:report_consolidated' %}?month={{ month }}&year={{ year }}&generate_report=1"
 				       class="button">
 				      Ver consolidado
 				    </a>-->
-				    {% if request.user.username == "admin" and month and year %}
+				    {% if request.user.is_superuser and month and year %}
 						<a href="{% url 'admin:report_consolidated' %}?month={{ month }}&year={{ year }}&generate_report=1&format=pdf"
 						  class="button default" style="background: green;">
 						  Descargar consolidado PDF
@@ -106,11 +106,15 @@
 
    					<a href="{% url 'admin:report_generar_pdf_publicadores' %}?privilege=PR&year={{ year }}&month={{ month }}"
    						class="button default" style="background: green;">Descargar tarjeta PR</a>
+
+   					<a href="exportar-asistencia-pdf/" class="button" style="background-color: #2b4c7e; color: white;">
+				     	Exportar Asistencia S-88 (PDF)
+				    </a>
 					{% endif %}
 				{% endif %}
 			{% endif %}
 	    </div>
-	    {% if request.user.username != 'admin' %}
+	    {% if not request.user.is_superuser %}
 	    <div class="block" id="bloqueo">
 			  Acceso restringido para esta fecha y no podras editar
 			</div>

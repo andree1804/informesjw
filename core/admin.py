@@ -7,7 +7,7 @@ from .forms import GroupSelectForm
 
 from .models import PersonVirtual
 from django import forms
-from django.db.models import Sum
+from django.db.models import Sum, Count, ExpressionWrapper, F, FloatField, Q
 from collections import OrderedDict
 from .forms import GroupSelectForm
 from django.urls import reverse
@@ -21,6 +21,7 @@ from django.utils.formats import date_format
 from django.utils.timezone import localtime
 from django.utils.safestring import mark_safe
 from collections import defaultdict
+from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear, NullIf
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -377,6 +378,7 @@ class ReportAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.generar_pdf_publicadores),
                 name='report_generar_pdf_publicadores',
             ),
+            
         ]
         return custom_urls + urls
 
@@ -765,6 +767,183 @@ class MeetingAttendanceAdmin(admin.ModelAdmin):
         if obj.virtual is None:
             obj.virtual = 0
         super().save_model(request, obj, form, change)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "exportar-asistencia-pdf/",
+                self.admin_site.admin_view(self.exportar_asistencia_pdf),
+                name="exportar_asistencia_pdf",
+            ),
+        ]
+        return custom_urls + urls
+
+    def exportar_asistencia_pdf(self, request):
+        from datetime import datetime
+
+        # 1. Obtener parámetros con valores por defecto si no están presentes
+        raw_month = request.GET.get("month_")
+        raw_year = request.GET.get("year_")
+
+        now = datetime.now()
+        selected_month = int(raw_month) if raw_month and raw_month.isdigit() else now.month
+        selected_year = int(raw_year) if raw_year and raw_year.isdigit() else now.year
+
+        # 2. Determinar el año teocrático base según el mes seleccionado (Septiembre es el mes 9)
+        if selected_month >= 9:
+            base_year = selected_year
+        else:
+            base_year = selected_year - 1
+
+        # Definir los periodos teocráticos dinámicos
+        prev_y = base_year - 1
+        curr_y = base_year
+        next_y = base_year + 1
+        after_next_y = base_year + 2
+
+        ys_current = f"{curr_y} - {next_y}"       # Ej. "2025 - 2026" si selecciona 2026 (mes < 9)
+        ys_following = f"{next_y} - {after_next_y}" # Ej. "2026 - 2027"
+
+        # 3. Mapeo dinámico de bloques para el PDF S-88
+        # Django week_day: 1 = Domingo, 2 = Lunes, ..., 6 = Viernes, 7 = Sábado
+        blocks_config = {
+            # --- ENTRE SEMANA (Lunes a Viernes) ---
+            1: {
+                "year_service": ys_current,
+                "start_y": curr_y,
+                "end_y": next_y,
+                "days": [2, 3, 4, 5, 6],
+            },
+            2: {
+                "year_service": ys_following,
+                "start_y": next_y,
+                "end_y": after_next_y,
+                "days": [2, 3, 4, 5, 6],
+            },
+            # --- FIN DE SEMANA (Sábado y Domingo) ---
+            3: {
+                "year_service": ys_current,
+                "start_y": curr_y,
+                "end_y": next_y,
+                "days": [1, 7],
+            },
+            4: {
+                "year_service": ys_following,
+                "start_y": next_y,
+                "end_y": after_next_y,
+                "days": [1, 7],
+            },
+        }
+
+        months_order = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8]
+        field_values = {}
+
+        for idx, cfg in blocks_config.items():
+            start_y = cfg["start_y"]
+            end_y = cfg["end_y"]
+            days = cfg["days"]
+
+            # Filtrar por año teocrático y tipo de día (entre semana vs fin de semana)
+            print(start_y)
+            qs = PersonVirtual.objects.filter(
+                meeting_date__gte=f"{start_y}-09-01",
+                meeting_date__lte=f"{end_y}-08-31",
+                meeting_date__week_day__in=days,
+            )
+
+            monthly = (
+                qs.annotate(
+                    month=ExtractMonth("meeting_date"),
+                    year=ExtractYear("meeting_date"),
+                )
+                .values("year", "month")
+                .annotate(
+                    num_meetings=Count("id"),
+                    total_attendance=Coalesce(Sum("in_person"), 0)
+                    + Coalesce(Sum("virtual"), 0),
+                )
+                .annotate(
+                    weekly_avg=ExpressionWrapper(
+                        F("total_attendance") * 1.0 / NullIf(F("num_meetings"), 0),
+                        output_field=FloatField(),
+                    )
+                )
+            )
+
+            metrics_by_month = {item["month"]: item for item in monthly}
+            valid_avgs = []
+
+            # Asignar año de servicio en el PDF (Service Year_1, Service Year_2, etc.)
+            field_values[f"Service Year_{idx}"] = f"{start_y} - {end_y}"
+
+            # Asignar filas de los 12 meses
+            for m_idx, m in enumerate(months_order, start=1):
+                m_data = metrics_by_month.get(m, {})
+                num_m = m_data.get("num_meetings", 0)
+                tot_att = m_data.get("total_attendance", 0)
+                wk_avg = m_data.get("weekly_avg", 0.0) or 0.0
+
+                field_values[f"{idx}-Meeting_{m_idx}"] = (
+                    str(num_m) if num_m > 0 else ""
+                )
+                field_values[f"{idx}-Attendance_{m_idx}"] = (
+                    str(tot_att) if tot_att > 0 else ""
+                )
+                field_values[f"{idx}-Average_{m_idx}"] = (
+                    str(round(wk_avg, 2)) if wk_avg > 0 else ""
+                )
+
+                if wk_avg > 0:
+                    valid_avgs.append(wk_avg)
+
+            # Promedio total del año teocrático
+            monthly_avg = (
+                str(round(sum(valid_avgs) / len(valid_avgs), 2))
+                if valid_avgs
+                else ""
+            )
+            field_values[f"{idx}-Average_Total"] = monthly_avg
+
+        # Rellenar la plantilla PDF mediante pdfrw
+        template_path = os.path.join(
+            settings.BASE_DIR, "publisher_cards/S-88_template.pdf"
+        )
+        output_path = os.path.join(
+            tempfile.gettempdir(), "S-88_Asistencia_2025_2027.pdf"
+        )
+
+        template = PdfReader(template_path)
+        if template.Root.AcroForm:
+            template.Root.AcroForm.update(
+                PdfDict(NeedAppearances=PdfObject("true"))
+            )
+
+        # Inyección de datos a los AcroFields
+        for page in template.pages:
+            annotations = page.get("/Annots")
+            if not annotations:
+                continue
+
+            for annotation in annotations:
+                field_raw = annotation.get("/T")
+                if not field_raw:
+                    continue
+
+                field_name = field_raw.to_unicode().replace("þÿ", "").strip()
+
+                if field_name in field_values:
+                    val = str(field_values[field_name])
+                    annotation.update(PdfDict(V=val))
+
+        PdfWriter().write(output_path, template)
+
+        with open(output_path, "rb") as f:
+            response = HttpResponse(f.read(), content_type="application/pdf")
+            response["Content-Disposition"] = (
+                'attachment; filename="S-88_Asistencia_2025_2027.pdf"'
+            )
+            return response
 
 
 class ConsolidatedAdmin(admin.ModelAdmin):
