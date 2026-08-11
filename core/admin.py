@@ -15,7 +15,7 @@ from datetime import datetime
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from django.template.loader import render_to_string
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.timezone import localtime
@@ -385,108 +385,206 @@ class ReportAdmin(admin.ModelAdmin):
     def fill_pdf(self, person, reports, template_path, output_path, year_service):
         template = PdfReader(template_path)
 
-        # Activar renderizado visual de campos
         if template.Root.AcroForm:
-            template.Root.AcroForm.update(PdfDict(NeedAppearances=PdfObject('true')))
+            template.Root.AcroForm.update(
+                PdfDict(
+                    NeedAppearances=PdfObject('true')
+                )
+            )
+
+        partes_nombre = [
+            person.names,
+            person.paternal_surname,
+            person.maternal_surname
+        ]
+        nombre_valido = [texto for texto in partes_nombre if texto]
+        nombre_completo = " ".join(nombre_valido)
+
+        birth = person.birth.strftime('%d/%m/%Y') if person.birth else None
+        baptism = person.baptism.strftime('%d/%m/%Y') if person.baptism else None
+
+        privilege_names = {
+            priv.name
+            for priv in person.privileges_permanent.all()
+        }
+
+        total_hours = sum(
+            int(report.hours or 0)
+            for report in reports
+        )
+
+        month_position = {
+            9: 1,
+            10: 2,
+            11: 3,
+            12: 4,
+            1: 5,
+            2: 6,
+            3: 7,
+            4: 8,
+            5: 9,
+            6: 10,
+            7: 11,
+            8: 12
+        }
+
+        report_fields = {}
+
+        for report in reports:
+            month = int(report.month)
+            m = month_position.get(month)
+
+            if not m:
+                continue
+
+            index = 20 + m - 1
+
+            report_fields[f'901_{index}_CheckBox'] = (
+                report, 'participated'
+            )
+            report_fields[f'902_{index}_Text_C_SanSerif'] = (
+                report, 'courses'
+            )
+            report_fields[f'903_{index}_CheckBox'] = (
+                report, 'auxiliar'
+            )
+            report_fields[f'904_{index}_S21_Value'] = (
+                report, 'hours'
+            )
+            report_fields[f'905_{index}_Text_SanSerif'] = (
+                report, 'note'
+            )
 
         for page in template.pages:
             annotations = page['/Annots']
+
             if not annotations:
                 continue
 
             for annotation in annotations:
                 field_raw = annotation.get('/T')
+
                 if not field_raw:
                     continue
 
-                # Decodificar UTF-16 (quitar þÿ)
-                field = field_raw.to_unicode().replace('þÿ', '').strip()
+                field = (
+                    field_raw
+                    .to_unicode()
+                    .replace('þÿ', '')
+                    .strip()
+                )
 
-                if person.birth:
-                    birth = person.birth.strftime('%d/%m/%Y')
-                
-                if person.baptism:
-                    baptism = person.baptism.strftime('%d/%m/%Y')
-                # Campos individuales
                 if field == '900_1_Text_SanSerif':
-                    partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
-                    # Filtramos para quitar los valores que sean None o cadenas vacías
-                    nombre_valido = [texto for texto in partes_nombre if texto]
-                    nombre_completo = " ".join(nombre_valido)
-                    annotation.update(PdfDict(V=nombre_completo))
+                    annotation.update(
+                        PdfDict(V=nombre_completo)
+                    )
 
-                if field == '900_2_Text_SanSerif' and person.birth:
-                    annotation.update(PdfDict(V=str(birth)))
-                if field == '900_3_CheckBox' and person.gender == True:
-                    annotation.update(PdfDict(AS=PdfName('Yes')))
-                if field == '900_4_CheckBox' and person.gender == False:
-                    annotation.update(PdfDict(AS=PdfName('Yes')))
-                if field == '900_5_Text_SanSerif' and person.baptism:
-                    annotation.update(PdfDict(V=str(baptism)))
-                if field == '900_6_CheckBox' and person.hope == False:
-                    annotation.update(PdfDict(AS=PdfName('Yes')))
-                if field == '900_7_CheckBox' and person.hope == True:
-                    annotation.update(PdfDict(AS=PdfName('Yes')))
+                elif field == '900_2_Text_SanSerif' and birth:
+                    annotation.update(
+                        PdfDict(V=birth)
+                    )
 
-                for priv in person.privileges_permanent.all():
-                    if field == '900_8_CheckBox' and priv.name == 'Anciano':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    if field == '900_9_CheckBox' and priv.name == 'Siervo Ministerial':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    if field == '900_10_CheckBox' and priv.name == 'Precursor Regular':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    if field == '900_11_CheckBox' and priv.name == 'Precursor Especial':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    if field == '900_12_CheckBox' and priv.name == 'Misionero':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                if field == '900_13_Text_C_SanSerif':
-                    annotation.update(PdfDict(V=year_service))
-                    #annotation.update(PdfDict(V=f"{(reports[0].year)-1}-{int(reports[0].year)}"))
+                elif field == '900_3_CheckBox' and person.gender is True:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
 
-                # Meses dinámicos
-                for report in reports:
-                    #m = int(report.month)
-                    total_hours = sum(int(r.hours or 0) for r in reports)
-                    if int(report.month) == 9:
-                        m = 1
-                    elif int(report.month) == 10:
-                        m = 2
-                    elif int(report.month) == 11:
-                        m = 3
-                    elif int(report.month) == 12:
-                        m = 4
-                    elif int(report.month) == 8:
-                        m = 12
-                    elif int(report.month) == 7:
-                        m = 11
-                    elif int(report.month) == 6:
-                        m = 10
-                    elif int(report.month) == 5:
-                        m = 9
-                    elif int(report.month) == 4:
-                        m = 8
-                    elif int(report.month) == 3:
-                        m = 7
-                    elif int(report.month) == 2:
-                        m = 6
-                    elif int(report.month) == 1:
-                        m = 5
+                elif field == '900_4_CheckBox' and person.gender is False:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
 
-                    if field == f'901_{20 + m - 1}_CheckBox' and report.participated:
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    elif field == f'902_{20 + m - 1}_Text_C_SanSerif' and report.courses > 0:
-                        annotation.update(PdfDict(V=str(report.courses)))
-                    elif field == f'903_{20 + m - 1}_CheckBox' and report.privilege.name == 'Auxiliar':
-                        annotation.update(PdfDict(AS=PdfName('Yes')))
-                    elif field == f'904_{20 + m - 1}_S21_Value' and report.hours > 0:
-                        annotation.update(PdfDict(V=str(report.hours)))
-                    elif field == f'905_{20 + m - 1}_Text_SanSerif' and report.note:
-                        annotation.update(PdfDict(V=str(report.note)))
+                elif field == '900_5_Text_SanSerif' and baptism:
+                    annotation.update(
+                        PdfDict(V=baptism)
+                    )
 
-                if field == '904_32_S21_Value' and total_hours > 0:
-                    annotation.update(PdfDict(V=str(total_hours)))  # o el valor dinámico que desees
+                elif field == '900_6_CheckBox' and person.hope is False:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
 
-        PdfWriter().write(output_path, template)
+                elif field == '900_7_CheckBox' and person.hope is True:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_8_CheckBox' and 'Anciano' in privilege_names:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_9_CheckBox' and 'Siervo Ministerial' in privilege_names:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_10_CheckBox' and 'Precursor Regular' in privilege_names:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_11_CheckBox' and 'Precursor Especial' in privilege_names:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_12_CheckBox' and 'Misionero' in privilege_names:
+                    annotation.update(
+                        PdfDict(AS=PdfName('Yes'))
+                    )
+
+                elif field == '900_13_Text_C_SanSerif':
+                    annotation.update(
+                        PdfDict(V=year_service)
+                    )
+
+                elif field == '904_32_S21_Value':
+                    if total_hours > 0:
+                        annotation.update(
+                            PdfDict(V=str(total_hours))
+                        )
+
+                elif field in report_fields:
+                    report, report_type = report_fields[field]
+
+                    if report_type == 'participated':
+                        if report.participated:
+                            annotation.update(
+                                PdfDict(AS=PdfName('Yes'))
+                            )
+
+                    elif report_type == 'courses':
+                        if report.courses > 0:
+                            annotation.update(
+                                PdfDict(V=str(report.courses))
+                            )
+
+                    elif report_type == 'auxiliar':
+                        if (
+                            report.privilege and
+                            report.privilege.name == 'Auxiliar'
+                        ):
+                            annotation.update(
+                                PdfDict(AS=PdfName('Yes'))
+                            )
+
+                    elif report_type == 'hours':
+                        if report.hours > 0:
+                            annotation.update(
+                                PdfDict(V=str(report.hours))
+                            )
+
+                    elif report_type == 'note':
+                        if report.note:
+                            annotation.update(
+                                PdfDict(V=str(report.note))
+                            )
+
+        PdfWriter().write(
+            output_path,
+            template
+        )
 
     def generar_pdf(self, request):
         person_id = request.GET.get('person')
@@ -494,79 +592,189 @@ class ReportAdmin(admin.ModelAdmin):
         month = request.GET.get('month')
         year = request.GET.get('year')
 
-        # Determinar el año teocrático al que pertenece el mes seleccionado
         year = int(year)
-        if int(month) >= 9:
-            start_year = year
-            end_year = int(year) + 1
-            year_service = f"{year}-{int(year + 1)}"
-        else:
-            start_year = int(year) - 1
-            end_year = year
-            year_service = f"{int(year - 1)}-{year}"
+        month = int(month)
 
-        template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base.pdf')  # <-- actualiza la ruta
+        if month >= 9:
+            start_year = year
+            end_year = year + 1
+            year_service = f"{year}-{year + 1}"
+        else:
+            start_year = year - 1
+            end_year = year
+            year_service = f"{year - 1}-{year}"
+
+        template_path = os.path.join(
+            settings.BASE_DIR,
+            'publisher_cards/pdf_base.pdf'
+        )
 
         if person_id:
-            person = get_object_or_404(Person, pk=person_id)
-            # Filtrado de reportes en el año teocrático
-            reports = Report.objects.filter(
-                person=person
-            ).filter(
-                Q(year=start_year, month__in=['9', '10', '11', '12']) |  # Septiembre–Diciembre del año inicial
-                Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])  # Enero–Agosto del siguiente año
-            ).order_by('year', 'month')
+            person = get_object_or_404(
+                Person.objects.select_related(
+                    'privilege'
+                ).prefetch_related(
+                    'privileges_permanent'
+                ),
+                pk=person_id
+            )
 
-            output_path = os.path.join(tempfile.gettempdir(), f"tarjeta_{person.id}.pdf")
-            self.fill_pdf(person, list(reports), template_path, output_path)
+            reports = list(
+                Report.objects.filter(
+                    person=person
+                ).filter(
+                    Q(
+                        year=start_year,
+                        month__in=['9', '10', '11', '12']
+                    ) |
+                    Q(
+                        year=end_year,
+                        month__in=['1', '2', '3', '4', '5', '6', '7', '8']
+                    )
+                ).select_related(
+                    'privilege'
+                ).order_by(
+                    'year',
+                    'month'
+                )
+            )
 
-            with open(output_path, 'rb') as f:
-                partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
-                nombre_valido = [texto for texto in partes_nombre if texto]
-                nombre_archivo = "_".join(nombre_valido)
+            output_path = os.path.join(
+                tempfile.gettempdir(),
+                f"tarjeta_{person.id}.pdf"
+            )
 
-                response = HttpResponse(f.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename=tarjeta_{nombre_archivo}.pdf'
-                return response
+            self.fill_pdf(
+                person,
+                reports,
+                template_path,
+                output_path,
+                year_service
+            )
+
+            partes_nombre = [
+                person.names,
+                person.paternal_surname,
+                person.maternal_surname
+            ]
+            nombre_valido = [texto for texto in partes_nombre if texto]
+            nombre_archivo = "_".join(nombre_valido)
+
+            response = FileResponse(
+                open(output_path, 'rb'),
+                content_type='application/pdf'
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename=tarjeta_{nombre_archivo}.pdf'
+            )
+            return response
 
         elif group_id:
             group = get_object_or_404(Group, pk=group_id)
-            persons = Person.objects.filter(group=group).order_by('names')
+
+            persons = list(
+                Person.objects.filter(
+                    group=group
+                ).select_related(
+                    'privilege'
+                ).prefetch_related(
+                    'privileges_permanent'
+                ).order_by(
+                    'names'
+                )
+            )
+
+            person_ids = [person.id for person in persons]
+
+            reports_queryset = Report.objects.filter(
+                person_id__in=person_ids
+            ).filter(
+                Q(
+                    year=start_year,
+                    month__in=['9', '10', '11', '12']
+                ) |
+                Q(
+                    year=end_year,
+                    month__in=['1', '2', '3', '4', '5', '6', '7', '8']
+                )
+            ).select_related(
+                'privilege'
+            ).order_by(
+                'year',
+                'month'
+            )
+
+            reports_by_person = {}
+
+            for report in reports_queryset:
+                reports_by_person.setdefault(
+                    report.person_id,
+                    []
+                ).append(report)
 
             temp_dir = tempfile.mkdtemp()
-            zip_filename = os.path.join(temp_dir, f"tarjetas_grupo_{group.id}.zip")
+            zip_filename = os.path.join(
+                temp_dir,
+                f"tarjetas_grupo_{group.id}.zip"
+            )
 
-            with zipfile.ZipFile(zip_filename, 'w') as zipf:
+            with zipfile.ZipFile(
+                zip_filename,
+                'w',
+                compression=zipfile.ZIP_STORED
+            ) as zipf:
+
                 for person in persons:
-                    # Filtrado de reportes en el año teocrático
-                    reports = Report.objects.filter(
-                        person=person
-                    ).filter(
-                        Q(year=start_year, month__in=['9', '10', '11', '12']) |  # Septiembre–Diciembre del año inicial
-                        Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])  # Enero–Agosto del siguiente año
-                    ).order_by('year', 'month')
+                    reports = reports_by_person.get(person.id, [])
 
-                    if reports.exists():
-                        partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
-                        nombre_valido = [texto for texto in partes_nombre if texto]
-                        nombre_completo = "_".join(nombre_valido)
+                    if not reports:
+                        continue
 
-                        if person.privilege.name == 'Publicador':
-                            priv_name = ''
-                        else:
-                            priv_name = f"-{person.privilege.name}"
-                            
-                        pdf_path = os.path.join(temp_dir, f"{nombre_completo}{priv_name}.pdf")
-                        self.fill_pdf(person, list(reports), template_path, pdf_path, year_service)
-                        zipf.write(pdf_path, arcname=f"{nombre_completo}{priv_name}.pdf")
+                    partes_nombre = [
+                        person.names,
+                        person.paternal_surname,
+                        person.maternal_surname
+                    ]
+                    nombre_valido = [texto for texto in partes_nombre if texto]
+                    nombre_completo = "_".join(nombre_valido)
 
-            with open(zip_filename, 'rb') as f:
-                response = HttpResponse(f.read(), content_type='application/zip')
-                response['Content-Disposition'] = f'attachment; filename=tarjetas_{group.name}.zip'
-                return response
+                    if person.privilege.name == 'Publicador':
+                        priv_name = ''
+                    else:
+                        priv_name = f"-{person.privilege.name}"
 
-        else:
-            return HttpResponse("Debes enviar al menos 'person' o 'group' en la URL.", status=400)
+                    pdf_filename = f"{nombre_completo}{priv_name}.pdf"
+                    pdf_path = os.path.join(
+                        temp_dir,
+                        pdf_filename
+                    )
+
+                    self.fill_pdf(
+                        person,
+                        reports,
+                        template_path,
+                        pdf_path,
+                        year_service
+                    )
+
+                    zipf.write(
+                        pdf_path,
+                        arcname=pdf_filename
+                    )
+
+            response = FileResponse(
+                open(zip_filename, 'rb'),
+                content_type='application/zip'
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename=tarjetas_{group.name}.zip'
+            )
+            return response
+
+        return HttpResponse(
+            "Debes enviar al menos 'person' o 'group' en la URL.",
+            status=400
+        )
 
     def generar_pdf_publicadores(self, request):
         month = request.GET.get('month')
