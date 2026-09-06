@@ -57,7 +57,7 @@
             align-items: start;
             font-size: 11.5pt;
         }
-        .row-maestros input{ font-size: 11.5pt; width: 68%;}
+        .row-maestros input{ font-size: 11.5pt; width: 75%;}
         .row-maestros input.time-input{ width: 100%;}
 
         .bar { color: white !important; padding: 0px 6px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 14pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -152,18 +152,24 @@
     /* MODO TARJETAS */
     body:not(.modo-tarjetas) #print-only-container { display: none !important; }
     body.modo-tarjetas #main-wrapper { display: none !important; }
+    
     body.modo-tarjetas #print-only-container { 
-        display: block !important; 
-        width: 100%; 
-        column-count: 2; 
-        column-gap: 1.5cm; 
+        display: grid !important; 
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 6px;
+        width: 100% !important; 
+        height: 100vh !important;
+        box-sizing: border-box;
     }
+    
     .tarjeta-impresion { 
         border: 1px solid #999; 
-        margin-bottom: 1cm; 
         width: 100%; 
-        display: inline-block; 
+        height: 100%;
+        box-sizing: border-box;
         break-inside: avoid; 
+        page-break-inside: avoid;
     }
 
     /* Ajuste exclusivo para que los nombres no se corten lateralmente */
@@ -285,14 +291,14 @@
             {% for p in r.programa.tesoros %}
             <div class="row" id="row-tesoros">
                 <div>
-                    <strong>{{ p.numero }} {{ p.titulo }}</strong> 
+                    <strong class="titulo-punto">{{ p.numero }} {{ p.titulo }}</strong> 
                     <span class="description">
                         {% if "3." in p.numero %}{{ p.descripcion }}{% else %}{{ p.descripcion|slice:":10" }}{% endif %}
                     </span>
                 </div>
 
                 {% if "3." in p.numero %}
-                <div>
+                <div class="principal">
                     <strong>SALA PRINCIPAL</strong>
                     <input id="t-{{ r.id }}-{{ p.numero }}" class="m-save" type="text" placeholder="Asignado...">
                 </div>
@@ -306,12 +312,12 @@
                 {% if "3." in p.numero %}
                     <div class="auxiliar" style="display: none;">
                         <strong>SALA AUXILIAR</strong>
-                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Asignado...">
                     </div>
                 {% elif "2." in p.numero %}
                     <div class="auxiliar" style="display: none;">
-                        <strong>PRESIDENTE</strong>
-                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                        <strong>Presidente Aux.</strong>
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Asignado...">
                     </div>
                 {% else%}
                     <div class="auxiliar" style="display: none;"></div>
@@ -333,6 +339,7 @@
                 <div class="principal">
                     {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion %}
                     <div>
+                        <strong>SALA PRINCIPAL</strong>
                         <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
                     </div>
                     {% else %}
@@ -351,6 +358,7 @@
                 <div class="auxiliar" style="display: none;">
                     {% if "Discurso" in p.titulo or "Discurso" in p.descripcion %}
                         <div>
+                            <strong>SALA AUXILIAR</strong>
                             <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
                         </div>
                     {% else %}
@@ -602,102 +610,114 @@ document.addEventListener('change', function(event) {
     });
 
 
-    function imprimirTarjetas() {
-        const container = document.getElementById('print-only-container');
-        if (!container) return;
-        container.innerHTML = ""; 
+function imprimirTarjetas() {
+    const container = document.getElementById('print-only-container');
+    if (!container) return;
+    container.innerHTML = ""; 
 
-        const filas = document.querySelectorAll('.semana-bloque .row');
+    const filas = document.querySelectorAll('.semana-bloque .row');
+    
+    filas.forEach(fila => {
+        const tituloElement = fila.querySelector('.titulo-punto');
         
-        filas.forEach(fila => {
-            const tituloElement = fila.querySelector('.titulo-punto');
+        if (tituloElement) {
+            const titulo = tituloElement.innerText.trim();
+            const num = parseInt(titulo.split(' ')[0].replace('.', ''));
             
-            if (tituloElement) {
-                const titulo = tituloElement.innerText.trim();
-                // Limpieza robusta del número de intervención
-                const num = parseInt(titulo.split(' ')[0].replace('.', ''));
-                
-                // --- FILTRO: Solo tarjetas de "Seamos mejores maestros" (puntos 4, 5, 6) ---
-                const esSeamosMejoresMaestros = (num >= 4 && num <= 6); 
-                
-                if (esSeamosMejoresMaestros) {
-                    // --- CAPTURA DE DATOS ---
-                    const inputsFila = fila.querySelectorAll('input[type="text"]:not(.time-input)');
-                    const nombrePublicador = inputsFila.length > 0 ? inputsFila[0].value : "";
-                    const nombreAyudante = inputsFila.length > 1 ? inputsFila[1].value : "";
-                    
-                    // Búsqueda segura de fecha
-                    const bloquePadre = fila.closest('.semana-bloque');
-                    const fecha = bloquePadre.querySelector('.m-save')?.value || 
-                                  bloquePadre.querySelector('.date')?.innerText.trim() || "";
+            // --- FILTRO: Solo tarjetas de "Seamos mejores maestros" (puntos 3, 4, 5, 6) ---
+            const esSeamosMejoresMaestros = (num >= 3 && num <= 6); 
+            
+            if (esSeamosMejoresMaestros) {
+                const bloquePadre = fila.closest('.semana-bloque');
+                const fecha = bloquePadre.querySelector('.m-save')?.value || 
+                              bloquePadre.querySelector('.date')?.innerText.trim() || "";
 
-                    let tiposDeTarjeta = [false]; 
-                    if (nombreAyudante.trim() !== "") {
-                        tiposDeTarjeta.push(true);
-                    }
+                const salas = [
+                    { selector: '.principal', nombreSala: 'Sala principal', idSala: 'principal' },
+                    { selector: '.auxiliar', nombreSala: 'Sala Auxiliar 1', idSala: 'auxiliar' }
+                ];
 
-                    tiposDeTarjeta.forEach(esCopia => {
-                        const div = document.createElement('div');
-                        div.className = "tarjeta-impresion";
-                        
-                        div.style.cssText = "box-sizing: border-box; padding: 25px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #333;";
-                        
-                        div.innerHTML = `
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <h3 style="font-size: 11.5pt; margin: 0; text-transform: uppercase; font-weight: bold;">ASIGNACIÓN PARA LA REUNIÓN</h3>
-                                <h3 style="font-size: 11.5pt; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">VIDA Y MINISTERIO CRISTIANOS</h3>
-                                ${esCopia ? '<small style="color: #d12027; font-weight: bold; font-size: 8pt; text-transform: uppercase; display: block; margin-top: 2px;">COPIA: AYUDANTE</small>' : ''}
-                            </div>
+                salas.forEach(sala => {
+                    const nodoSala = fila.querySelector(sala.selector);
+                    const estaVisible = nodoSala && (nodoSala.offsetWidth > 0 || nodoSala.offsetHeight > 0 || getComputedStyle(nodoSala).display !== 'none');
 
-                            <div style="display: grid; grid-template-columns: 100px 1fr; gap: 8px 10px; margin-bottom: 15px;">
-                                <span style="font-weight: bold;">Nombre:</span> 
-                                <span>${nombrePublicador || "_______________________"}</span>
+                    if (nodoSala && estaVisible) {
+                        const inputs = nodoSala.querySelectorAll('input[type="text"]:not(.time-input)');
+                        const nombrePublicador = inputs.length > 0 ? inputs[0].value.trim() : "";
+                        const nombreAyudante = inputs.length > 1 ? inputs[1].value.trim() : "";
+
+                        if (nombrePublicador !== "") {
+                            let tiposDeTarjeta = [false]; 
+                            if (nombreAyudante !== "") {
+                                tiposDeTarjeta.push(true);
+                            }
+
+                            tiposDeTarjeta.forEach(esCopia => {
+                                const div = document.createElement('div');
+                                div.className = "tarjeta-impresion";
                                 
-                                <span style="font-weight: bold;">Ayudante:</span> 
-                                <span>${nombreAyudante || "_______________________"}</span>
+                                // Padding y altura ajustados para encajar en la retícula de 6 por hoja
+                                div.style.cssText = "box-sizing: border-box; padding: 10px 14px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 8.5pt; line-height: 1.25; color: #333; border: 1px dashed #ccc; height: 100%; display: flex; flex-direction: column; justify-content: space-between;";
+                                
+                                div.innerHTML = `
+                                    <div style="text-align: center; margin-bottom: 8px;">
+                                        <h3 style="font-size: 9.5pt; margin: 0; text-transform: uppercase; font-weight: bold;">ASIGNACIÓN PARA LA REUNIÓN</h3>
+                                        <h3 style="font-size: 9.5pt; margin: 0 0 2px 0; text-transform: uppercase; font-weight: bold;">VIDA Y MINISTERIO CRISTIANOS</h3>
+                                        ${esCopia ? '<small style="color: #d12027; font-weight: bold; font-size: 7.5pt; text-transform: uppercase; display: block;">COPIA: AYUDANTE</small>' : ''}
+                                    </div>
 
-                                <span style="font-weight: bold;">Fecha:</span> 
-                                <span>${fecha}</span>
+                                    <div style="display: grid; grid-template-columns: 90px 1fr; gap: 4px 6px; margin-bottom: 8px;">
+                                        <span style="font-weight: bold;">Nombre:</span> 
+                                        <span>${nombrePublicador}</span>
+                                        
+                                        <span style="font-weight: bold;">Ayudante:</span> 
+                                        <span>${nombreAyudante || "_______________________"}</span>
 
-                                <span style="font-weight: bold;">Intervención núm.:</span> 
-                                <span style="font-weight: bold;">${titulo}</span>
-                            </div>
+                                        <span style="font-weight: bold;">Fecha:</span> 
+                                        <span>${fecha}</span>
 
-                            <div style="margin: 15px 0 10px 0;">
-                                <p style="font-weight: bold; margin-bottom: 5px;">Se presentará en:</p>
-                                <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
-                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" checked style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala principal</td></tr>
-                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala Auxiliar 1</td></tr>
-                                    <tr><td style="width: 25px; vertical-align: middle;"><input type="checkbox" style="transform: scale(1.2);"></td><td style="vertical-align: middle;">Sala Auxiliar 2</td></tr>
-                                </table>
-                            </div>
+                                        <span style="font-weight: bold;">Intervención núm.:</span> 
+                                        <span style="font-weight: bold;">${titulo}</span>
+                                    </div>
 
-                            <div style="margin-top: 25px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 8.5pt; color: #555; text-align: justify; line-height: 1.3;">
-                                <em><strong>Nota al estudiante:</strong> En la Guía de actividades encontrará la información que necesita para su intervención. Repase también las indicaciones que se describen en las Instrucciones para la reunión Vida y Ministerio Cristianos (S-38).</em>
-                            </div>
-                        `;
-                        container.appendChild(div);
-                    });
-                }
+                                    <div style="margin: 6px 0;">
+                                        <p style="font-weight: bold; margin: 0 0 4px 0;">Se presentará en:</p>
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                                            <tr>
+                                                <td style="width: 20px; vertical-align: middle;"><input type="checkbox" ${sala.idSala === 'principal' ? 'checked' : ''} style="transform: scale(1.0);"></td>
+                                                <td style="vertical-align: middle;">Sala principal</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="width: 20px; vertical-align: middle;"><input type="checkbox" ${sala.idSala === 'auxiliar' ? 'checked' : ''} style="transform: scale(1.0);"></td>
+                                                <td style="vertical-align: middle;">Sala Auxiliar</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+
+                                    <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #ccc; font-size: 7.5pt; color: #555; text-align: justify; line-height: 1.15;">
+                                        <em><strong>Nota al estudiante:</strong> En la Guía de actividades encontrará la información que necesita para su intervención. Repase también las indicaciones que se describen en las Instrucciones para la reunión Vida y Ministerio Cristianos (S-38).</em>
+                                    </div>
+                                `;
+                                container.appendChild(div);
+                            });
+                        }
+                    }
+                });
             }
-        });
+        }
+    });
 
-        // --- ACTIVACIÓN DEL MODO IMPRESIÓN (Optimizado para Móviles) ---
-        document.body.classList.add('modo-tarjetas');
-        
-        // Usamos requestAnimationFrame para asegurar que el navegador aplique los estilos CSS
-        // antes de abrir el diálogo de impresión.
+    document.body.classList.add('modo-tarjetas');
+    
+    requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                window.print();
-                
-                // Retraso para limpiar la clase solo después de que el usuario cierre el diálogo
-                setTimeout(() => {
-                    document.body.classList.remove('modo-tarjetas');
-                }, 500);
-            });
+            window.print();
+            setTimeout(() => {
+                document.body.classList.remove('modo-tarjetas');
+            }, 500);
         });
-    }
+    });
+}
 
 </script>
 <div id="print-only-container" style="display: none;"></div>
