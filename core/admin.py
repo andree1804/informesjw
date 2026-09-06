@@ -386,17 +386,9 @@ class ReportAdmin(admin.ModelAdmin):
         template = PdfReader(template_path)
 
         if template.Root.AcroForm:
-            template.Root.AcroForm.update(
-                PdfDict(
-                    NeedAppearances=PdfObject('true')
-                )
-            )
+            template.Root.AcroForm.update(PdfDict(NeedAppearances=PdfObject('true')))
 
-        partes_nombre = [
-            person.names,
-            person.paternal_surname,
-            person.maternal_surname
-        ]
+        partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
         nombre_valido = [texto for texto in partes_nombre if texto]
         nombre_completo = " ".join(nombre_valido)
 
@@ -467,124 +459,75 @@ class ReportAdmin(admin.ModelAdmin):
                 if not field_raw:
                     continue
 
-                field = (
-                    field_raw
-                    .to_unicode()
-                    .replace('þÿ', '')
-                    .strip()
-                )
+                field = (field_raw.to_unicode().replace('þÿ', '').strip())
 
                 if field == '900_1_Text_SanSerif':
-                    annotation.update(
-                        PdfDict(V=nombre_completo)
-                    )
+                    annotation.update(PdfDict(V=nombre_completo))
 
                 elif field == '900_2_Text_SanSerif' and birth:
-                    annotation.update(
-                        PdfDict(V=birth)
-                    )
+                    annotation.update(PdfDict(V=birth))
 
                 elif field == '900_3_CheckBox' and person.gender is True:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_4_CheckBox' and person.gender is False:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_5_Text_SanSerif' and baptism:
-                    annotation.update(
-                        PdfDict(V=baptism)
-                    )
+                    annotation.update(PdfDict(V=baptism))
 
                 elif field == '900_6_CheckBox' and person.hope is False:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_7_CheckBox' and person.hope is True:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_8_CheckBox' and 'Anciano' in privilege_names:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_9_CheckBox' and 'Siervo Ministerial' in privilege_names:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_10_CheckBox' and 'Precursor Regular' in privilege_names:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_11_CheckBox' and 'Precursor Especial' in privilege_names:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_12_CheckBox' and 'Misionero' in privilege_names:
-                    annotation.update(
-                        PdfDict(AS=PdfName('Yes'))
-                    )
+                    annotation.update(PdfDict(AS=PdfName('Yes')))
 
                 elif field == '900_13_Text_C_SanSerif':
-                    annotation.update(
-                        PdfDict(V=year_service)
-                    )
+                    annotation.update(PdfDict(V=year_service))
 
                 elif field == '904_32_S21_Value':
                     if total_hours > 0:
-                        annotation.update(
-                            PdfDict(V=str(total_hours))
-                        )
+                        annotation.update(PdfDict(V=str(total_hours)))
 
                 elif field in report_fields:
                     report, report_type = report_fields[field]
 
                     if report_type == 'participated':
                         if report.participated:
-                            annotation.update(
-                                PdfDict(AS=PdfName('Yes'))
-                            )
+                            annotation.update(PdfDict(AS=PdfName('Yes')))
 
                     elif report_type == 'courses':
                         if report.courses > 0:
-                            annotation.update(
-                                PdfDict(V=str(report.courses))
-                            )
+                            annotation.update(PdfDict(V=str(report.courses)))
 
                     elif report_type == 'auxiliar':
-                        if (
-                            report.privilege and
-                            report.privilege.name == 'Auxiliar'
-                        ):
-                            annotation.update(
-                                PdfDict(AS=PdfName('Yes'))
-                            )
+                        if (report.privilege and report.privilege.name == 'Auxiliar'):
+                            annotation.update(PdfDict(AS=PdfName('Yes')))
 
                     elif report_type == 'hours':
                         if report.hours > 0:
-                            annotation.update(
-                                PdfDict(V=str(report.hours))
-                            )
+                            annotation.update(PdfDict(V=str(report.hours)))
 
                     elif report_type == 'note':
                         if report.note:
-                            annotation.update(
-                                PdfDict(V=str(report.note))
-                            )
+                            annotation.update(PdfDict(V=str(report.note)))
 
-        PdfWriter().write(
-            output_path,
-            template
-        )
+        PdfWriter().write(output_path, template)
 
     def generar_pdf(self, request):
         person_id = request.GET.get('person')
@@ -604,137 +547,59 @@ class ReportAdmin(admin.ModelAdmin):
             end_year = year
             year_service = f"{year - 1}-{year}"
 
-        template_path = os.path.join(
-            settings.BASE_DIR,
-            'publisher_cards/pdf_base.pdf'
-        )
+        template_path = os.path.join(settings.BASE_DIR, 'publisher_cards/pdf_base.pdf')
 
         if person_id:
             person = get_object_or_404(
-                Person.objects.select_related(
-                    'privilege'
-                ).prefetch_related(
-                    'privileges_permanent'
-                ),
-                pk=person_id
-            )
+                Person.objects.select_related('privilege').prefetch_related('privileges_permanent'), pk=person_id)
 
             reports = list(
-                Report.objects.filter(
-                    person=person
-                ).filter(
-                    Q(
-                        year=start_year,
-                        month__in=['9', '10', '11', '12']
-                    ) |
-                    Q(
-                        year=end_year,
-                        month__in=['1', '2', '3', '4', '5', '6', '7', '8']
-                    )
-                ).select_related(
-                    'privilege'
-                ).order_by(
-                    'year',
-                    'month'
-                )
-            )
+                Report.objects.filter(person=person).filter(
+                    Q(year=start_year, month__in=['9', '10', '11', '12']) |
+                    Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])
+                ).select_related('privilege').order_by('year', 'month'))
 
-            output_path = os.path.join(
-                tempfile.gettempdir(),
-                f"tarjeta_{person.id}.pdf"
-            )
+            output_path = os.path.join(tempfile.gettempdir(), f"tarjeta_{person.id}.pdf")
 
-            self.fill_pdf(
-                person,
-                reports,
-                template_path,
-                output_path,
-                year_service
-            )
+            self.fill_pdf(person, reports, template_path, output_path, year_service)
 
-            partes_nombre = [
-                person.names,
-                person.paternal_surname,
-                person.maternal_surname
-            ]
+            partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
             nombre_valido = [texto for texto in partes_nombre if texto]
             nombre_archivo = "_".join(nombre_valido)
 
-            response = FileResponse(
-                open(output_path, 'rb'),
-                content_type='application/pdf'
-            )
-            response['Content-Disposition'] = (
-                f'attachment; filename=tarjeta_{nombre_archivo}.pdf'
-            )
+            response = FileResponse(open(output_path, 'rb'), content_type='application/pdf')
+            response['Content-Disposition'] = (f'attachment; filename=tarjeta_{nombre_archivo}.pdf')
             return response
 
         elif group_id:
             group = get_object_or_404(Group, pk=group_id)
 
-            persons = list(
-                Person.objects.filter(
-                    group=group
-                ).select_related(
-                    'privilege'
-                ).prefetch_related(
-                    'privileges_permanent'
-                ).order_by(
-                    'names'
-                )
-            )
+            persons = list(Person.objects.filter(group=group).select_related('privilege')
+                .prefetch_related('privileges_permanent').order_by('names'))
 
             person_ids = [person.id for person in persons]
 
-            reports_queryset = Report.objects.filter(
-                person_id__in=person_ids
-            ).filter(
-                Q(
-                    year=start_year,
-                    month__in=['9', '10', '11', '12']
-                ) |
-                Q(
-                    year=end_year,
-                    month__in=['1', '2', '3', '4', '5', '6', '7', '8']
-                )
-            ).select_related(
-                'privilege'
-            ).order_by(
-                'year',
-                'month'
-            )
+            reports_queryset = Report.objects.filter(person_id__in=person_ids).filter(
+                Q(year=start_year, month__in=['9', '10', '11', '12']) |
+                Q(year=end_year, month__in=['1', '2', '3', '4', '5', '6', '7', '8'])
+            ).select_related('privilege').order_by('year', 'month')
 
             reports_by_person = {}
 
             for report in reports_queryset:
-                reports_by_person.setdefault(
-                    report.person_id,
-                    []
-                ).append(report)
+                reports_by_person.setdefault(report.person_id, []).append(report)
 
             temp_dir = tempfile.mkdtemp()
-            zip_filename = os.path.join(
-                temp_dir,
-                f"tarjetas_grupo_{group.id}.zip"
-            )
+            zip_filename = os.path.join(temp_dir, f"tarjetas_grupo_{group.id}.zip")
 
-            with zipfile.ZipFile(
-                zip_filename,
-                'w',
-                compression=zipfile.ZIP_STORED
-            ) as zipf:
-
+            with zipfile.ZipFile(zip_filename, 'w', compression=zipfile.ZIP_STORED) as zipf:
                 for person in persons:
                     reports = reports_by_person.get(person.id, [])
 
                     if not reports:
                         continue
 
-                    partes_nombre = [
-                        person.names,
-                        person.paternal_surname,
-                        person.maternal_surname
-                    ]
+                    partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
                     nombre_valido = [texto for texto in partes_nombre if texto]
                     nombre_completo = "_".join(nombre_valido)
 
@@ -744,31 +609,14 @@ class ReportAdmin(admin.ModelAdmin):
                         priv_name = f"-{person.privilege.name}"
 
                     pdf_filename = f"{nombre_completo}{priv_name}.pdf"
-                    pdf_path = os.path.join(
-                        temp_dir,
-                        pdf_filename
-                    )
+                    pdf_path = os.path.join(temp_dir, pdf_filename)
 
-                    self.fill_pdf(
-                        person,
-                        reports,
-                        template_path,
-                        pdf_path,
-                        year_service
-                    )
+                    self.fill_pdf(person, reports, template_path, pdf_path, year_service)
 
-                    zipf.write(
-                        pdf_path,
-                        arcname=pdf_filename
-                    )
+                    zipf.write(pdf_path, arcname=pdf_filename)
 
-            response = FileResponse(
-                open(zip_filename, 'rb'),
-                content_type='application/zip'
-            )
-            response['Content-Disposition'] = (
-                f'attachment; filename=tarjetas_{group.name}.zip'
-            )
+            response = FileResponse(open(zip_filename, 'rb'), content_type='application/zip')
+            response['Content-Disposition'] = (f'attachment; filename=tarjetas_{group.name}.zip')
             return response
 
         return HttpResponse(

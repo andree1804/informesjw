@@ -33,6 +33,8 @@
             100% { transform: rotate(360deg); }
         }
         #main-wrapper { opacity: 0; }
+
+
     </style>
 
     <style>
@@ -46,6 +48,18 @@
         .header h1 { color: #d12027; font-size: 12pt; margin: 0; text-transform: uppercase; font-weight: 800; }
         .header .date { font-weight: bold; font-size: 5pt; color: #555; }
         .row { display: grid; grid-template-columns: 1fr 240px 65px; gap: 12px; margin-bottom: 10px; align-items: start; }
+
+        .row-maestros {
+            display: grid;
+            grid-template-columns: 1fr 215px 180px 120px;
+            gap: 12px;
+            margin-bottom: 10px;
+            align-items: start;
+            font-size: 11.5pt;
+        }
+        .row-maestros input{ font-size: 11.5pt; width: 68%;}
+        .row-maestros input.time-input{ width: 100%;}
+
         .bar { color: white !important; padding: 0px 6px; font-weight: bold; text-transform: uppercase; margin: 15px 0 10px 0; font-size: 14pt; border-radius: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
@@ -59,6 +73,7 @@
             body { padding: 10px; }
             .semana-bloque { padding: 15px; margin-bottom: 20px; }
             .row { grid-template-columns: 1fr; gap: 5px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+            .row-maestros { grid-template-columns: 1fr; gap: 5px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
             input { width: 100% !important; box-sizing: border-box; }
             .time-input { text-align: left; width: 50px !important; }
             .row > div { width: 100% !important; }
@@ -68,35 +83,115 @@
             .master-dia-container {grid-template-columns: 1fr !important; padding:  10px 10px !important;}
         }
 
-        @media print {
-            @page { size: A4; margin: 0.5cm !important; }
-            
-            .row { display: grid !important; grid-template-columns: 1fr 240px 65px !important; gap: 12px !important; width: 100% !important; }
-            .no-print { display: none !important; } 
-            
-            body { padding: 0 !important; margin: 0 !important; background: white; width: 210mm; } 
-            
-            #main-wrapper { opacity: 1 !important; }
-            
-            .semana-bloque { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0.5cm !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; page-break-after: always !important; }
-            .semana-bloque:last-of-type { page-break-after: auto !important; }
-            
-            input::placeholder { color: transparent !important; }
-            input { border: none !important; background: transparent !important; }
+@media print {
+    @page { size: A4; margin: 0.5cm !important; }
 
-            /* --- AQUÍ ESTÁ LA MAGIA --- */
-            
-            /* Por defecto: Si NO es modo tarjetas, ocultamos solo el contenedor de tarjetas */
-            body:not(.modo-tarjetas) #print-only-container { display: none !important; }
+    /* Forzar caja exacta para evitar desbordamiento horizontal */
+    *, *::before, *::after {
+        box-sizing: border-box !important;
+    }
 
-            /* Si es modo tarjetas: Ocultamos el programa principal y mostramos las tarjetas */
-            body.modo-tarjetas #main-wrapper { display: none !important; }
-            body.modo-tarjetas #print-only-container { 
-                display: block !important; width: 100%; column-count: 2; column-gap: 1.5cm; 
-            }
-            
-            .tarjeta-impresion { border: 1px solid #999; margin-bottom: 1cm; width: 100%; display: inline-block; break-inside: avoid; }
-        }
+    body { padding: 0 !important; margin: 0 !important; background: white; width: 100% !important; } 
+    #main-wrapper { opacity: 1 !important; }
+
+    .semana-bloque { 
+        box-shadow: none !important; 
+        border-radius: 0 !important; 
+        margin: 0 !important; 
+        padding: 0.2cm 0 !important; 
+        width: 100% !important; 
+        max-width: 100% !important; 
+        page-break-after: always !important; 
+    }
+    .semana-bloque:last-of-type { page-break-after: auto !important; }
+
+    /* FILA ESTÁNDAR (3 columnas: Título | Sala Principal | Hora) */
+    .row { 
+        display: grid !important; 
+        grid-template-columns: 1fr 240px 50px !important; 
+        gap: 10px !important; 
+        width: 100% !important; 
+        align-items: start !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* FILA CON SALA AUXILIAR (4 columnas: Título | Sala Principal | Sala Auxiliar | Hora) */
+    .row.row-maestros,
+    #row-maestros.row-maestros,
+    #row-tesoros.row-maestros {
+        display: grid !important;
+        grid-template-columns: 1fr 180px 180px 50px !important;
+        gap: 8px !important;
+    }
+
+    /* Sub-filas internas de Ayudante (evita que rompan el ancho) */
+    .principal .row, 
+    .auxiliar .row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        gap: 5px !important;
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Reglas generales para inputs al imprimir */
+    input { 
+        border: none !important; 
+        background: transparent !important; 
+        font-family: inherit !important;
+    }
+    input::placeholder { color: transparent !important; }
+    
+    .time-input { 
+        text-align: right !important; 
+        width: 100% !important; 
+    }
+
+    .no-print { display: none !important; }
+
+    /* MODO TARJETAS */
+    body:not(.modo-tarjetas) #print-only-container { display: none !important; }
+    body.modo-tarjetas #main-wrapper { display: none !important; }
+    body.modo-tarjetas #print-only-container { 
+        display: block !important; 
+        width: 100%; 
+        column-count: 2; 
+        column-gap: 1.5cm; 
+    }
+    .tarjeta-impresion { 
+        border: 1px solid #999; 
+        margin-bottom: 1cm; 
+        width: 100%; 
+        display: inline-block; 
+        break-inside: avoid; 
+    }
+
+    /* Ajuste exclusivo para que los nombres no se corten lateralmente */
+    .row input, 
+    .row-maestros input {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding-left: 0 !important;   /* Quita espacio extra solo a la izquierda */
+        padding-right: 0 !important;  /* Quita espacio extra solo a la derecha */
+        text-overflow: clip !important;
+        overflow: visible !important;
+    }
+
+    /* En filas con etiqueta como "Ayudante: [input]" */
+    .row > div input,
+    .principal input,
+    .auxiliar input {
+        width: 100% !important;
+        float: none !important;
+    }
+
+    /* Alineación estrecha para la etiqueta sin romper línea */
+    .principal .row > div:first-child,
+    .auxiliar .row > div:first-child {
+        white-space: nowrap;
+        padding-right: 2px;
+    }
+}
 
         .toolbar { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
         .btn { padding: 5px 5px; color: white; border: none; cursor: pointer; transition: transform 0.2s; font-size: 1.5rem; }
@@ -148,6 +243,11 @@
                 </select>
             </div>
             <div>
+                <strong>Sala Auxiliar:</strong>
+                <input type="checkbox" name="auxiliar" id="auxiliar" class="chk-auxiliar" style="width: 5%;">
+            </div>
+            
+            <div>
                 <strong>Hora de inicio de reunión:</strong>
                 <input type="text" id="hora-inicio" value="6:00" placeholder="6:00" style="width: 36%!important; background: #eef; border: 1px solid #ccc; padding: 5px; font-family: inherit;">
             </div>
@@ -183,40 +283,89 @@
 
             <div class="bar bg-tesoros">TESOROS DE LA BIBLIA</div>
             {% for p in r.programa.tesoros %}
-            <div class="row">
+            <div class="row" id="row-tesoros">
                 <div>
                     <strong>{{ p.numero }} {{ p.titulo }}</strong> 
                     <span class="description">
                         {% if "3." in p.numero %}{{ p.descripcion }}{% else %}{{ p.descripcion|slice:":10" }}{% endif %}
                     </span>
                 </div>
-                <input id="t-{{ r.id }}-{{ p.numero }}" class="m-save" type="text" placeholder="Asignado...">
-                <input type="text" class="time-input" value="{{ p.hora }}">
+
+                {% if "3." in p.numero %}
+                <div>
+                    <strong>SALA PRINCIPAL</strong>
+                    <input id="t-{{ r.id }}-{{ p.numero }}" class="m-save" type="text" placeholder="Asignado...">
+                </div>
+                {% else %}
+                    <div>
+                        <input id="t-{{ r.id }}-{{ p.numero }}" class="m-save" type="text" placeholder="Asignado...">
+                    </div>
+                {% endif %}    
+                
+
+                {% if "3." in p.numero %}
+                    <div class="auxiliar" style="display: none;">
+                        <strong>SALA AUXILIAR</strong>
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                    </div>
+                {% elif "2." in p.numero %}
+                    <div class="auxiliar" style="display: none;">
+                        <strong>PRESIDENTE</strong>
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                    </div>
+                {% else%}
+                    <div class="auxiliar" style="display: none;"></div>
+                {% endif %}
+                <div>
+                    <input type="text" class="time-input" value="{{ p.hora }}">
+                </div>
+                
             </div>
             {% endfor %}
 
             <div class="bar bg-maestros">SEAMOS MEJORES MAESTROS</div>
             {% for p in r.programa.maestros %}
-            <div class="row">
+            <div class="row" id="row-maestros">
                 <div>
                     <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
                     <span class="description">{{ p.descripcion }}</span>
                 </div>
-                {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion %}
-                <div>
-                    <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
-                </div>
-                {% else %}
-                <div>
-                    <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
-                    <div class="row">
-                        <div style="margin-top: 5px;"><strong>Ayudante: </strong></div>
-                        <div>
-                            <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                <div class="principal">
+                    {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion %}
+                    <div>
+                        <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                    </div>
+                    {% else %}
+                    <div>
+                        <strong>SALA PRINCIPAL</strong>
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                        <div class="row">
+                            <div style="margin-top: 5px;"><strong>Ayte: </strong></div>
+                            <div>
+                                <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
-                {% endif %}
+                <div class="auxiliar" style="display: none;">
+                    {% if "Discurso" in p.titulo or "Discurso" in p.descripcion %}
+                        <div>
+                            <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                        </div>
+                    {% else %}
+                        <div>
+                            <strong>SALA AUXILIAR</strong>
+                            <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                            <div class="row">
+                                <div style="margin-top: 5px;"><strong>Ayte: </strong></div>
+                                <div>
+                                    <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
                 <input type="text" class="time-input" value="{{ p.hora }}">
             </div>
             {% endfor %}
@@ -250,7 +399,7 @@
             </div>
             {% endfor %}
 
-            <div class="bar" style="background-color: #333 !important;">CONCLUSIÓN</div>
+
             <div class="row">
                 <div><strong>{{ r.programa.conclusion.cancion }}</strong></div>
                 <strong>Presidente</strong>
@@ -262,7 +411,7 @@
                 <input type="text" class="time-input" value="7:40">
             </div>
             <div class="row">
-                <div><strong>Oración: </strong><input class="m-save" id="ora2-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
+                <div><strong>Oración: </strong><input class="m-save" id="ora2-{{ r.id }}" style="float: right; width: 70%!important;" type="text" placeholder="Asignado..."></div>
             </div>
         </div>
         {% endfor %}
@@ -304,6 +453,25 @@
         const masterInput = document.getElementById('master-dia-control');
         const horaInicioInput = document.getElementById('hora-inicio');
 
+document.addEventListener('change', function(event) {
+    if (event.target && event.target.classList.contains('chk-auxiliar')) {
+        const estaMarcado = event.target.checked;
+
+        // 1. Alterna la clase 'row-maestros' en TODOS los elementos con clase .row-maestros-target (o la clase contenedora)
+        const todosLosMaestros = document.querySelectorAll('#row-maestros, #row-tesoros, .row-maestros');
+        todosLosMaestros.forEach(function(div) {
+            div.classList.toggle('row-maestros', estaMarcado);
+        });
+
+        // 2. Controla la visibilidad de TODOS los divs .auxiliar
+        const divsAuxiliares = document.querySelectorAll('.auxiliar');
+        const estadoVisibilidad = estaMarcado ? 'block' : 'none';
+
+        divsAuxiliares.forEach(function(div) {
+            div.style.display = estadoVisibilidad;
+        });
+    }
+});
         // --- LÓGICA DE HORARIOS CORREGIDA ---
         let ultimaHoraBase = "6:00"; // Siempre partimos de que el HTML tiene base 6:00
 
