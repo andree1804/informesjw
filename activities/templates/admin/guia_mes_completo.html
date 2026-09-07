@@ -277,14 +277,21 @@
             </div>
 
             <div class="row">
-                <strong>{{ r.texto }}</strong>
-                <div><strong>Presidente: </strong><input class="m-save" id="pres-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
-                <input id="can-ora-{{ r.id }}" type="text" class="time-input" value="6:00">
+                <div><strong>{{ r.texto }}</strong></div>
+                <div class="row">
+                    <div><strong>Presidente: </strong></div>    
+                    <div><input class="m-save" id="pres-{{ r.id }}" style="width: 60%;" type="text" placeholder="Asignado..."></div>
+                </div>
+                <div><input id="can-ora-{{ r.id }}" type="text" class="time-input" value="6:00"></div>
+                
             </div>
             <div class="row">
                 <div>{{ r.programa.inicio.intro }}</div>
-                <div><strong>Oración: </strong><input class="m-save" id="ora1-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
-                <input id="intro-{{ r.id }}" type="text" class="time-input" value="6:05">
+                <div class="row">
+                    <div><strong>Oración: </strong></div>
+                    <div><input class="m-save" id="ora1-{{ r.id }}" style="width: 60%;" type="text" placeholder="Asignado..."></div>
+                </div>
+                <div><input id="intro-{{ r.id }}" type="text" class="time-input" value="6:05"></div>
             </div>
 
             <div class="bar bg-tesoros">TESOROS DE LA BIBLIA</div>
