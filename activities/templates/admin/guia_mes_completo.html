@@ -64,7 +64,7 @@
         .bg-tesoros { background-color: #567c82 !important; }
         .bg-maestros { background-color: #ae852d !important; }
         .bg-vida { background-color: #942911 !important; }
-        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11.5pt; background: #fffdf2; padding: 2px; }
+        input { border: none; border-bottom: 1px solid #ccc; width: 97%; font-family: inherit; font-size: 11.5pt; background: #bce8ff; padding: 2px; }
         .time-input { text-align: right; font-weight: bold; background: transparent; border-bottom: 1px solid #bbb; padding-right: 4px; }
         .titulo-punto { font-weight: bold; display: block; }
         .seniority { font-size: 8.5pt; color: #666; display: block; margin-top: 3px; font-style: italic; line-height: 1.2; }
@@ -250,7 +250,7 @@
             </div>
             <div>
                 <strong>Sala Auxiliar:</strong>
-                <input type="checkbox" name="auxiliar" id="auxiliar" class="chk-auxiliar" style="width: 5%;">
+                <input type="checkbox" name="auxiliar" id="auxiliar" class="chk-auxiliar" style="width: 5%!important;">
             </div>
             
             <div>
@@ -268,7 +268,7 @@
                         {{ r.fecha }}
                     </div>
                     <input type="hidden" id="fecha-{{ r.fecha }}" class="fecha-referencia" value="{{ r.fecha }}">
-                    <input id="hoy-{{ r.fecha }}" class="m-save" type="text" style="text-align: center; font-weight: bold;" placeholder="Día..." value="">
+                    <input id="hoy-{{ r.fecha }}" type="text" style="text-align: center; font-weight: bold;" placeholder="Día..." value="">
                 </div>
             </div>
 
@@ -278,12 +278,12 @@
 
             <div class="row">
                 <strong>{{ r.texto }}</strong>
-                <div><strong>Presidente: </strong><input class="m-save" id="pres-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+                <div><strong>Presidente: </strong><input class="m-save" id="pres-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
                 <input id="can-ora-{{ r.id }}" type="text" class="time-input" value="6:00">
             </div>
             <div class="row">
                 <div>{{ r.programa.inicio.intro }}</div>
-                <div><strong>Oración: </strong><input class="m-save" id="ora1-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Presidente..."></div>
+                <div><strong>Oración: </strong><input class="m-save" id="ora1-{{ r.id }}" style="float: right; width: 60%;" type="text" placeholder="Asignado..."></div>
                 <input id="intro-{{ r.id }}" type="text" class="time-input" value="6:05">
             </div>
 
@@ -398,7 +398,7 @@
                         <div class="row">
                             <div style="margin-top: 5px;"><strong>Lector: </strong></div>
                             <div>
-                                <input class="m-save" id="lec-{{ r.id }}" type="text" style="margin-top: 4px;" placeholder="Lector...">
+                                <input class="m-save" id="lec-{{ r.id }}" type="text" style="margin-top: 4px;" placeholder="Asignado...">
                             </div>
                         </div>
                     {% endif %}
@@ -544,7 +544,8 @@ document.addEventListener('change', function(event) {
         masterInput.addEventListener('change', actualizarFechas);
         if(masterInput.value) actualizarFechas();
 
-        const inputs = document.querySelectorAll('.m-save');
+        // INSERTAR ALEATORIAMENTE PARTICIPACION DE PUBLICADORES
+        /*const inputs = document.querySelectorAll('.m-save');
         const usados = { ancianos: new Set(), ancianos_y_siervos: new Set(), varones: new Set(), mujeres: new Set(), hombres: new Set() };
 
         inputs.forEach(input => {
@@ -574,7 +575,8 @@ document.addEventListener('change', function(event) {
                 if (input.value) localStorage.setItem(input.id, input.value);
             }
             input.addEventListener('input', (e) => localStorage.setItem(e.target.id, e.target.value));
-        });
+        });*/
+        // FIN DE INSERCION
     });
 
     function limpiarFormulario() {
