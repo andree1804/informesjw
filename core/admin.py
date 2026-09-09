@@ -318,13 +318,19 @@ class ReportAdmin(admin.ModelAdmin):
             return redirect(f"{request.path}?group={group_id}&month={selected_month}&year={selected_year}")
 
         if request.user.username != 'admin':
-            group_default = Group.objects.filter(name=request.user.username.capitalize()).first()
-            groups = Group.objects.all()
-
-            form.fields['group'].choices = [(group.id, group.name) for group in groups]
+            group_default = Group.objects.filter(name=request.user.first_name.capitalize()).first()
+    
+            # 1. Asignamos el QuerySet en lugar de redefinir choices
+            form.fields['group'].queryset = Group.objects.all()
             
             if group_default:
+                # 2. Asignamos el valor en initial (para formularios limpios/GET)
                 form.fields['group'].initial = group_default.id
+                
+                # 3. Forzamos la selección inyectando el valor en form.data (para formularios vinculados)
+                if hasattr(form, 'data') and 'group' not in form.data:
+                    form.data = form.data.copy()
+                    form.data['group'] = str(group_default.id)
         else:
             groups = Group.objects.exclude(name='-')
             form.fields['group'].choices = [(group.id, group.name) for group in groups]
