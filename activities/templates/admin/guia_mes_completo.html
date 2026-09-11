@@ -344,7 +344,7 @@
                     <span class="description">{{ p.descripcion }}</span>
                 </div>
                 <div class="principal">
-                    {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion %}
+                    {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion or "Análisis con el auditorio." in p.descripcion %}
                     <div>
                         <strong>SALA PRINCIPAL</strong>
                         <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
@@ -363,7 +363,7 @@
                     {% endif %}
                 </div>
                 <div class="auxiliar" style="display: none;">
-                    {% if "Discurso" in p.titulo or "Discurso" in p.descripcion %}
+                    {% if "Discurso" in p.titulo or "Discurso" in p.descripcion or "Análisis con el auditorio." in p.descripcion %}
                         <div>
                             <strong>SALA AUXILIAR</strong>
                             <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
