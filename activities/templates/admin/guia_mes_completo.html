@@ -319,12 +319,12 @@
                 {% if "3." in p.numero %}
                     <div class="auxiliar" style="display: none;">
                         <strong>SALA AUXILIAR</strong>
-                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Asignado...">
+                        <input class="m-save" id="t-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Asignado..." style="width: 85%">
                     </div>
                 {% elif "2." in p.numero %}
                     <div class="auxiliar" style="display: none;">
                         <strong>Presidente Aux.</strong>
-                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Asignado...">
+                        <input class="m-save" id="pres-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Asignado..." style="width: 85%">
                     </div>
                 {% else%}
                     <div class="auxiliar" style="display: none;"></div>
@@ -352,7 +352,7 @@
                     {% else %}
                     <div>
                         <strong>SALA PRINCIPAL</strong>
-                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                        <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador..." style="width: 85%">
                         <div class="row">
                             <div style="margin-top: 5px;"><strong>Ayte: </strong></div>
                             <div>
@@ -366,16 +366,16 @@
                     {% if "Discurso" in p.titulo or "Discurso" in p.descripcion or "Análisis con el auditorio." in p.descripcion %}
                         <div>
                             <strong>SALA AUXILIAR</strong>
-                            <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                            <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Publicador...">
                         </div>
                     {% else %}
                         <div>
                             <strong>SALA AUXILIAR</strong>
-                            <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
+                            <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Publicador..." style="width: 85%">
                             <div class="row">
                                 <div style="margin-top: 5px;"><strong>Ayte: </strong></div>
                                 <div>
-                                    <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
+                                    <input class="m-save" id="m2-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Ayudante..." style="margin-top: 4px;">
                                 </div>
                             </div>
                         </div>
@@ -444,6 +444,7 @@
 
     const listas = {
         ancianos: {{ ancianos_list|safe|default:"[]" }},
+        ancianos_2: {{ ancianos_list_2|safe|default:"[]" }},
         ancianos_y_siervos: {{ ancianos_y_siervos_list|safe|default:"[]" }},
         varones: {{ varones_list|safe|default:"[]" }},
         mujeres: {{ mujeres_list|safe|default:"[]" }},
@@ -552,9 +553,10 @@ document.addEventListener('change', function(event) {
         if(masterInput.value) actualizarFechas();
 
         // INSERTAR ALEATORIAMENTE PARTICIPACION DE PUBLICADORES
-        /*const inputs = document.querySelectorAll('.m-save');
+        const inputs = document.querySelectorAll('.m-save');
         const usados = { ancianos: new Set(), ancianos_y_siervos: new Set(), varones: new Set(), mujeres: new Set(), hombres: new Set() };
 
+        const parejasGenero = {};
         inputs.forEach(input => {
             const savedValue = localStorage.getItem(input.id);
             if (savedValue) {
@@ -572,8 +574,23 @@ document.addEventListener('change', function(event) {
                     else input.value = obtenerAleatorio(listas.ancianos_y_siervos, usados.ancianos_y_siervos);
                 }
                 else if (input.id.startsWith('m1-') || input.id.startsWith('m2-')) {
-                    if (Math.random() < 0.8 && listas.mujeres.length > 0) input.value = obtenerAleatorio(listas.mujeres, usados.mujeres);
-                    else input.value = obtenerAleatorio(listas.hombres, usados.hombres);
+                    const parejaId = input.id.replace(/^m[12]-/, '');
+
+                    if (!(parejaId in parejasGenero)) {
+                        parejasGenero[parejaId] = Math.random() < 0.7 ? 'mujeres' : 'hombres';
+                    }
+
+                    if (parejasGenero[parejaId] === 'mujeres') {
+                        input.value = obtenerAleatorio(
+                            listas.mujeres,
+                            usados.mujeres
+                        );
+                    } else {
+                        input.value = obtenerAleatorio(
+                            listas.hombres,
+                            usados.hombres
+                        );
+                    }
                 }
                 else if (input.id.startsWith('discurso-')) input.value = obtenerAleatorio(listas.varones, usados.varones);
                 else if (input.id.startsWith('v-')) input.value = obtenerAleatorio(listas.ancianos, usados.ancianos);
@@ -582,7 +599,7 @@ document.addEventListener('change', function(event) {
                 if (input.value) localStorage.setItem(input.id, input.value);
             }
             input.addEventListener('input', (e) => localStorage.setItem(e.target.id, e.target.value));
-        });*/
+        });
         // FIN DE INSERCION
     });
 

@@ -127,70 +127,194 @@ def guia_mes_completo_view(request):
                 res_s = requests.get(url_s, timeout=15)
                 soup_s = BeautifulSoup(res_s.text, "html.parser")
                 article = soup_s.find("article", id="article")
-                if not article: return None
+                if not article:
+                    return None
 
                 fecha_h1 = article.find("h1").get_text(strip=True) if article.find("h1") else "Fecha"
                 texto_h2 = article.find("h2").get_text(strip=True) if article.find("h2") else ""
                 viernes_calc = obtener_viernes_fecha(fecha_h1)
-                
+
                 # Reloj interno por cada hilo de semana
                 reloj_local = datetime.strptime("18:05", "%H:%M")
 
                 prog = {
-                    "inicio": {"cancion": "", "intro": ""}, 
-                    "tesoros": [], "maestros": [], "vida_cancion": "", 
-                    "vida": [], "conclusion": {"cancion": "", "intro": "", "hora": ""}
+                    "inicio": {"cancion": "", "intro": ""},
+                    "tesoros": [],
+                    "maestros": [],
+                    "vida_cancion": "",
+                    "vida": [],
+                    "conclusion": {
+                        "cancion": "",
+                        "intro": "",
+                        "hora": ""
+                    }
                 }
 
                 def proc_h(min_str, r_reunion):
                     h_form = r_reunion.strftime("%I:%M").lstrip("0")
                     try:
                         m = int(min_str) + 1 if min_str else 0
-                    except: m = 0
+                    except:
+                        m = 0
                     return h_form, r_reunion + timedelta(minutes=m)
 
-                for h3 in article.find_all("h3"):
-                    t_h3 = h3.get_text(" ", strip=True)
-                    if "Canción" in t_h3 and not prog["inicio"]["cancion"] and "introducción" in t_h3.lower():
-                        partes_t = t_h3.split('|')
-                        prog["inicio"] = {"cancion": partes_t[0].strip(), "intro": partes_t[1].strip() if len(partes_t)>1 else "Palabras de introducción"}
-                    elif "Canción" in t_h3 and "introducción" not in t_h3.lower() and "conclusión" not in t_h3.lower():
-                        prog["vida_cancion"] = {"cantico": t_h3, "hora": reloj_local.strftime("%I:%M").lstrip("0")}
+                # Indica en qué sección estamos.
+                # Ya no dependemos del número máximo de cada sección.
+                seccion_actual = None
+
+                for elemento in article.find_all(["h2", "h3"]):
+                    t = elemento.get_text(" ", strip=True)
+                    t_lower = t.lower()
+
+                    # ---------------------------------------------------------
+                    # DETECTAR CAMBIO DE SECCIÓN
+                    # ---------------------------------------------------------
+                    if elemento.name == "h2":
+                        if "TESOROS DE LA BIBLIA" in t:
+                            seccion_actual = "tesoros"
+
+                        elif "SEAMOS MEJORES MAESTROS" in t:
+                            seccion_actual = "maestros"
+
+                        elif "NUESTRA VIDA CRISTIANA" in t:
+                            seccion_actual = "vida"
+
+                        continue
+
+                    h3 = elemento
+                    t_h3 = t
+
+                    # ---------------------------------------------------------
+                    # CANCIÓN INICIAL + INTRODUCCIÓN
+                    # ---------------------------------------------------------
+                    if (
+                        "Canción" in t_h3
+                        and not prog["inicio"]["cancion"]
+                        and "introducción" in t_lower
+                    ):
+                        partes_t = t_h3.split("|")
+
+                        prog["inicio"] = {
+                            "cancion": partes_t[0].strip(),
+                            "intro": (
+                                partes_t[1].strip()
+                                if len(partes_t) > 1
+                                else "Palabras de introducción"
+                            )
+                        }
+
+                    # ---------------------------------------------------------
+                    # CANCIÓN DE NUESTRA VIDA CRISTIANA
+                    # ---------------------------------------------------------
+                    elif (
+                        "Canción" in t_h3
+                        and "introducción" not in t_lower
+                        and "conclusión" not in t_lower
+                    ):
+                        prog["vida_cancion"] = {
+                            "cantico": t_h3,
+                            "hora": reloj_local.strftime("%I:%M").lstrip("0")
+                        }
+
                         reloj_local += timedelta(minutes=5)
-                    elif "conclusión" in t_h3.lower():
-                        partes_t = t_h3.split('|')
+
+                    # ---------------------------------------------------------
+                    # PALABRAS DE CONCLUSIÓN
+                    # ---------------------------------------------------------
+                    elif "conclusión" in t_lower:
+                        partes_t = t_h3.split("|")
+
                         h_f, _ = proc_h("0", reloj_local)
-                        prog["conclusion"] = {"cancion": partes_t[0].strip(), "intro": partes_t[1].strip() if len(partes_t)>1 else "Palabras de conclusión", "hora": h_f}
+
+                        prog["conclusion"] = {
+                            "cancion": partes_t[0].strip(),
+                            "intro": (
+                                partes_t[1].strip()
+                                if len(partes_t) > 1
+                                else "Palabras de conclusión"
+                            ),
+                            "hora": h_f
+                        }
+
+                    # ---------------------------------------------------------
+                    # PUNTOS NUMERADOS
+                    # ---------------------------------------------------------
                     else:
-                        match_t = re.search(r'^(\d+\.)\s*(.*)', t_h3)
+                        match_t = re.search(r"^(\d+\.)\s*(.*)", t_h3)
+
                         if match_t:
                             num_s = match_t.group(1)
+
                             div_det = h3.find_next_sibling("div")
-                            e_info = div_det.get_text(" ", strip=True) if div_det else ""
-                            t_m = re.search(r'\((\d+)\s*mins?\.?\)', t_h3 + " " + e_info)
+                            e_info = (
+                                div_det.get_text(" ", strip=True)
+                                if div_det
+                                else ""
+                            )
+
+                            t_m = re.search(
+                                r"\((\d+)\s*mins?\.?\)",
+                                t_h3 + " " + e_info
+                            )
+
                             tie = t_m.group(1) if t_m else "5"
-                            
-                            dat = {"numero": num_s, "titulo": match_t.group(2).replace(f"({tie})", "").strip(), "tiempo": tie, "descripcion": e_info.replace(f"({tie})", "").replace("min.", "").strip()}
-                            
+
+                            dat = {
+                                "numero": num_s,
+                                "titulo": match_t.group(2)
+                                    .replace(f"({tie})", "")
+                                    .strip(),
+                                "tiempo": tie,
+                                "descripcion": e_info
+                                    .replace(f"({tie})", "")
+                                    .replace("min.", "")
+                                    .strip()
+                            }
+
                             n = int(num_s.replace(".", ""))
-                            if n <= 3:
-                                dat["hora"], reloj_local = proc_h(tie, reloj_local)
+
+                            # -------------------------------------------------
+                            # TESOROS DE LA BIBLIA
+                            # -------------------------------------------------
+                            if seccion_actual == "tesoros":
+                                dat["hora"], reloj_local = proc_h(
+                                    tie,
+                                    reloj_local
+                                )
+
                                 prog["tesoros"].append(dat)
-                            elif 4 <= n <= 6:
-                                dat["hora"], reloj_local = proc_h(tie, reloj_local)
+
+                            # -------------------------------------------------
+                            # SEAMOS MEJORES MAESTROS
+                            # -------------------------------------------------
+                            elif seccion_actual == "maestros":
+                                dat["hora"], reloj_local = proc_h(
+                                    tie,
+                                    reloj_local
+                                )
+
                                 prog["maestros"].append(dat)
-                            else:
-                                dat["hora"], reloj_local = proc_h(int(tie)-1, reloj_local)
+
+                            # -------------------------------------------------
+                            # NUESTRA VIDA CRISTIANA
+                            # -------------------------------------------------
+                            elif seccion_actual == "vida":
+                                dat["hora"], reloj_local = proc_h(
+                                    int(tie) - 1,
+                                    reloj_local
+                                )
+
                                 prog["vida"].append(dat)
 
                 return {
-                    "id": re.sub(r'\W+', '', fecha_h1),
+                    "id": re.sub(r"\W+", "", fecha_h1),
                     "fecha": fecha_h1,
                     "viernes": viernes_calc,
                     "texto": texto_h2,
                     "programa": prog,
-                    "url_original": url_s # Para mantener el orden
+                    "url_original": url_s
                 }
+
             except Exception as e:
                 print(f"Error en semana {url_s}: {e}")
                 return None
@@ -228,19 +352,33 @@ def guia_mes_completo_view(request):
 
     # --- LISTAS DE PERSONAS (Siempre actualizadas desde DB) ---
     def obtener_lista_nombres_completos(queryset):
-        tuplas = queryset.values_list('names', 'paternal_surname').distinct()
+        tuplas = [
+            (names.split()[0], paternal_surname)
+            for names, paternal_surname in queryset.values_list(
+                'names', 'paternal_surname'
+            ).distinct()
+            if names
+        ]
         return [" ".join([texto for texto in tupla if texto]) for tupla in tuplas]
 
-    ancianos = obtener_lista_nombres_completos(Person.objects.filter(privileges_permanent__name="Anciano").exclude(privilege__name="-"))
-    ancianos_y_siervos = obtener_lista_nombres_completos(Person.objects.filter(privileges_permanent__name__in=["Anciano", "Siervo Ministerial"]).exclude(privilege__name="-"))
-    varones_bautizados = obtener_lista_nombres_completos(Person.objects.filter(gender=True, baptism__isnull=False).exclude(privilege__name="-"))
-    mujeres = obtener_lista_nombres_completos(Person.objects.filter(gender=False).exclude(privilege__name="-"))
-    hombres = obtener_lista_nombres_completos(Person.objects.filter(gender=True).exclude(privilege__name="-"))
+    ancianos = obtener_lista_nombres_completos(
+        Person.objects.filter(privileges_permanent__name="Anciano").exclude(privilege__name="-"))
+    ancianos_2 = obtener_lista_nombres_completos(
+        Person.objects.filter(privileges_permanent__name="Anciano").exclude(privilege__name="-"))
+    ancianos_y_siervos = obtener_lista_nombres_completos(
+        Person.objects.filter(privileges_permanent__name__in=["Anciano", "Siervo Ministerial"]).exclude(privilege__name="-"))
+    varones_bautizados = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=True, baptism__isnull=False).exclude(privilege__name="-"))
+    mujeres = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=False).exclude(privilege__name="-"))
+    hombres = obtener_lista_nombres_completos(
+        Person.objects.filter(gender=True).exclude(privilege__name="-"))
 
     contexto = {
         "reuniones": reuniones_mes, 
         "periodo": periodo,
         "ancianos_list": ancianos,
+        "ancianos_list_2": ancianos_2,
         "ancianos_y_siervos_list": ancianos_y_siervos,
         "varones_list": varones_bautizados,
         "mujeres_list": mujeres,
