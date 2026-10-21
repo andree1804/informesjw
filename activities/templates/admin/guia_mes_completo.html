@@ -268,7 +268,7 @@
                         {{ r.fecha }}
                     </div>
                     <input type="hidden" id="fecha-{{ r.fecha }}" class="fecha-referencia" value="{{ r.fecha }}">
-                    <input id="hoy-{{ r.fecha }}" type="text" style="text-align: center; font-weight: bold;" placeholder="Día..." value="">
+                    <input id="hoy-{{ r.fecha }}" type="text" style="text-align: center; font-weight: bold; font-size: 15pt!important;" placeholder="Día..." value="">
                 </div>
             </div>
 
@@ -341,17 +341,17 @@
             <div class="row" id="row-maestros">
                 <div>
                     <span class="titulo-punto">{{ p.numero }} {{ p.titulo }}</span>
-                    <span class="description">{{ p.descripcion }}</span>
+                    <span class="description">{{ p.descripcion|truncatewords:29 }}</span>
                 </div>
                 <div class="principal">
                     {% if  "Discurso" in p.titulo or "Discurso" in p.descripcion or "Análisis con el auditorio." in p.descripcion %}
                     <div>
-                        <strong>SALA PRINCIPAL</strong>
+                        <!--<strong>SALA PRINCIPAL</strong>-->
                         <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador...">
                     </div>
                     {% else %}
                     <div>
-                        <strong>SALA PRINCIPAL</strong>
+                        <!--<strong>SALA PRINCIPAL</strong>-->
                         <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}" type="text" placeholder="Publicador..." style="width: 85%">
                         <div class="row">
                             <div style="margin-top: 5px;"><strong>Ayte: </strong></div>
@@ -365,12 +365,12 @@
                 <div class="auxiliar" style="display: none;">
                     {% if "Discurso" in p.titulo or "Discurso" in p.descripcion or "Análisis con el auditorio." in p.descripcion %}
                         <div>
-                            <strong>SALA AUXILIAR</strong>
+                            <!--<strong>SALA AUXILIAR</strong>-->
                             <input class="m-save" id="discurso-m1-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Publicador...">
                         </div>
                     {% else %}
                         <div>
-                            <strong>SALA AUXILIAR</strong>
+                            <!--<strong>SALA AUXILIAR</strong>-->
                             <input class="m-save" id="m1-{{ r.id }}-{{ p.numero }}_2" type="text" placeholder="Publicador..." style="width: 85%">
                             <div class="row">
                                 <div style="margin-top: 5px;"><strong>Ayte: </strong></div>

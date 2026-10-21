@@ -231,7 +231,7 @@ class ReportAdmin(admin.ModelAdmin):
                 group_id=group_id,
                 month=selected_month,
                 year=selected_year
-            ).select_related("privilege", "person", "person__group")
+            ).select_related("privilege", "person", "person__group").order_by('person__paternal_surname')
 
             # Crear mapa rápido {person_id: Report}
             report_map = {r.person_id: r for r in reports}
@@ -239,21 +239,21 @@ class ReportAdmin(admin.ModelAdmin):
             # 2. ¿Ya existen reportes guardados para este grupo en este mes?
             if reports.exists():
                 # CASO A: El mes ya fue registrado. Traemos SOLO a las personas que tienen reporte.
-                # Así, si alguien se cambió de grupo después, seguirá apareciendo aquí.
+                persons = []  # Asegurar que esté inicializada la lista
                 for report in reports:
                     person = report.person
                     person.existing_report = report
                     person.privilege = report.privilege  # Usar privilegio que tenía al reportar
                     persons.append(person)
                 
-                # Ordenamos la lista resultante por nombre
-                persons.sort(key=lambda x: x.names)
+                # Ordenamos por apellido paterno en Python (coincidiendo con la consulta SQL)
+                persons.sort(key=lambda x: (x.paternal_surname or '').lower())
             else:
                 # CASO B: Es un mes nuevo. Cargamos a los que pertenecen al grupo HOY.
                 persons = list(
                     Person.objects.filter(group_id=group_id)
                     .select_related("group", "privilege")
-                    .order_by("names")
+                    .order_by("paternal_surname")
                 )
                 
                 for person in persons:
@@ -605,7 +605,7 @@ class ReportAdmin(admin.ModelAdmin):
                     if not reports:
                         continue
 
-                    partes_nombre = [person.names, person.paternal_surname, person.maternal_surname]
+                    partes_nombre = [person.paternal_surname, person.maternal_surname, person.names]
                     nombre_valido = [texto for texto in partes_nombre if texto]
                     nombre_completo = "_".join(nombre_valido)
 
