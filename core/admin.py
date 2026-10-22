@@ -238,7 +238,7 @@ class ReportAdmin(admin.ModelAdmin):
 
             # 2. ¿Ya existen reportes guardados para este grupo en este mes?
             if reports.exists():
-                # CASO A: El mes ya fue registrado. Traemos SOLO a las personas que tienen reporte
+                # CASO A: El mes ya fue registrado. Traemos SOLO a las personas que tienen reporte.
                 persons = []
                 for report in reports:
                     person = report.person
